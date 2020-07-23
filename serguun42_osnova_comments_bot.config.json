@@ -1,0 +1,43 @@
+{
+	"TELEGRAM_BOT_TOKEN": "012345:AAAAAAAAAAAAAAAAAAAAA",
+	"CMTT_PLATFORMS": {
+		"tjournal.ru": {
+			"token": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			"apiURL": "https://api.tjournal.ru/v1.8/",
+			"userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
+		},
+		"dtf.ru": {
+			"token": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+			"apiURL": "https://api.dtf.ru/v1.8/",
+			"userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
+		},
+		"vc.ru": {
+			"token": "ccccccccccccccccccccccccccccccccccccccccccccc",
+			"apiURL": "https://api.vc.ru/v1.8/",
+			"userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
+		}
+	},
+	"ADMIN_TELEGRAM_DATA": {
+		"id": 123456,
+		"username": "admin_username"
+	},
+	"CHATS_LIST": [
+		{
+			"id": -11111111111111111,
+			"name": "TEST CHAT",
+			"enabled": true
+		},
+		{
+			"id": -222222222222222,
+			"name": "PROD CHAT #1",
+			"enabled": true,
+			"fullsize": true
+		},
+		{
+			"id": -3333333333333333333,
+			"name": "PROD CHAT #2",
+			"enabled": true
+		}
+	],
+	"PROXY_URL": "https://proxy.com:port"
+}
