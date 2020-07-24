@@ -8,6 +8,7 @@ const
 			if (typeof arg == "object") fs.writeFileSync("./out/errors.json", JSON.stringify(arg, false, "\t"));
 		};
 	},
+	EmojiRegexp = require("./serguun42_osnova_comments_bot.emoji-regexp"),
 	NodeFetch = require("node-fetch"),
 	Telegraf = require("telegraf"),
 	Sessions = require("telegraf/session"),
@@ -16,8 +17,15 @@ const
 
 const { createCanvas, loadImage, registerFont } = require("canvas");
 
+
+
 registerFont("./fonts/Roboto-Regular.ttf", { family: "Roboto", weight: "400" });
 registerFont("./fonts/Roboto-Bold.ttf", { family: "Roboto", weight: "700" });
+
+if (DEV)
+	registerFont("./fonts/SegoeUIEmoji.ttf", { family: "Segoe UI Emoji" });
+else
+	registerFont("./fonts/NotoColorEmoji.ttf", { family: "Noto Color Emoji" });
 
 
 /**
@@ -92,6 +100,23 @@ const TGE = iStr => {
 			.replace(/\>/g, "&gt;");
 	else
 		return TGE(iStr.toString());
+};
+
+const EmojiToUnicode = (emoji) => {
+	let comp;
+
+	if (emoji.length === 1) {
+		comp = emoji.charCodeAt(0);
+	};
+
+	comp = (
+		(emoji.charCodeAt(0) - 0xD800) * 0x400
+		+ (emoji.charCodeAt(1) - 0xDC00) + 0x10000
+	);
+
+	if (comp < 0) comp = emoji.charCodeAt(0);
+
+	return comp.toString("16");
 };
 
 /**
@@ -408,27 +433,51 @@ const GlobalBuildImages = (iComments) => {
 
 	return new Promise(async (resolve) => {
 		iComments.forEach((commentData, commentIndex) => {
-			let text = commentData.text,
-				maxTextWidth = 1800,
-				fontSize = 64,
-				lines = [],
-				width = 0,
-				i, j, result,
-				textColor = "#121212";
+			const
+				fontSize = commentData.text && commentData.text.length > 100 ? 64 : 84,
+				commentBodyColor = "#121212",
+				headFontSize = 84,
+				commentHeadColor = "#444444";
 
-
-			let heightForCanvas = 400,
-				linesForReadCanvas = [];
+			let heightForCanvas = 400;
 
 
 
-			/** Text calculation */
-			if (commentData.text) {
-				const canvasForTest = createCanvas(2000, 1000);
+			/**
+			 * @typedef {Object} AdditionalTextEntity
+			 * @property {"underline"|"emoji"} type
+			 * @property {String} value
+			 * @property {Number} leftOffset
+			 * @property {Number} width
+			 * @property {Number} height
+			 */
+			/**
+			 * 
+			 * @param {String} text
+			 * @param {Number} maxTextWidth
+			 * @param {Number} fontSize
+			 * @param {String} [fontWeight="400"]
+			 * @returns {Array.<{type: "simple" | "complex", text: string, additionalEntities?: AdditionalTextEntity[]}>}
+			 */
+			const LocalGetLines = (text, maxTextWidth, fontSize, fontWeight = 400) => {
+				let lines = [],
+					linesForReturn = [],
+					width = 0,
+					i, j, result;
+
+				const canvasForTest = createCanvas(2000, 100);
 				const ctxForTest = canvasForTest.getContext("2d");
 
-				ctxForTest.font = "400 " + fontSize + "px Roboto";
-				ctxForTest.fillStyle = textColor;
+				ctxForTest.font = `${fontWeight} ${fontSize}px Roboto`;
+				ctxForTest.fillStyle = "#121212";
+
+
+				/** @type {String[]} */
+				let emojies = Array.from(text.match(EmojiRegexp.global) || []),
+					emojiIndex = 0;
+
+
+				text = text.replace(EmojiRegexp.global, "😀");
 
 
 				// Start calculation
@@ -446,14 +495,75 @@ const GlobalBuildImages = (iComments) => {
 				};
 
 
-				lines.forEach((line, lineIndex) => {
+				lines.forEach((line) => {
 					if (!(/\n/g.test(line)))
-						return linesForReadCanvas.push(line);
+						return linesForReturn.push(line);
 
-					line.split("\n").forEach((newSubLine) => linesForReadCanvas.push(newSubLine));
+					line.split("\n").forEach((newSubLine) => linesForReturn.push(newSubLine));
 				});
 
-				heightForCanvas += (fontSize * 1.2) * linesForReadCanvas.length;
+
+				linesForReturn = linesForReturn.map((line) => {
+					/** @type {AdditionalTextEntity[]} */
+					let additionalEntities = [];
+
+
+					if (EmojiRegexp.global.test(line)) {
+						let splittedByEmojies = line.split(EmojiRegexp.groupAndGlobal),
+							metrics = [];
+
+
+						splittedByEmojies.forEach((partOfLine) => {
+							let leftOffset = metrics.reduce((accumulator, value) => accumulator + value, 0);
+							
+							if (EmojiRegexp.single.test(partOfLine)) {
+								if (DEV)
+									ctxForTest.font = fontSize + "px Segoe UI Emoji";
+								else
+									ctxForTest.font = fontSize + "px Noto Color Emoji";
+
+
+								let currentMetrics = ctxForTest.measureText(partOfLine);
+
+								metrics.push(currentMetrics.width);
+
+
+								additionalEntities.push({
+									type: "emoji",
+									value: emojies[emojiIndex++],
+									leftOffset,
+									width: currentMetrics.width,
+									height: currentMetrics.actualBoundingBoxAscent + currentMetrics.actualBoundingBoxDescent
+								});
+							} else {
+								ctxForTest.font = `${fontWeight} ${fontSize}px Roboto`;
+
+								metrics.push(ctxForTest.measureText(partOfLine).width);
+							};
+						});
+					};
+
+
+					if (additionalEntities.length)
+						return { type: "complex", text: line.replace(EmojiRegexp.global, "😀"), additionalEntities };
+					else
+						return { type: "simple", text: line };
+				});
+
+
+				return linesForReturn;
+			};
+
+
+
+
+			let linesForRealCanvas = [];
+
+
+			/** Text calculation */
+			if (commentData.text) {
+				linesForRealCanvas = LocalGetLines(commentData.text, 1800, fontSize);
+				heightForCanvas += (fontSize * 1.2) * linesForRealCanvas.length + 32;
 			};
 
 
@@ -558,24 +668,74 @@ const GlobalBuildImages = (iComments) => {
 
 
 			if (commentData.text) {
-				ctx.font = "400 " + fontSize + "px Roboto";
-				ctx.fillStyle = textColor;
-				for (i = 0, j = linesForReadCanvas.length; i < j; ++i) {
-					ctx.fillText(linesForReadCanvas[i], 100, 300 + fontSize + (fontSize * 1.2) * i);
+				for (i = 0, j = linesForRealCanvas.length; i < j; ++i) {
+					if (linesForRealCanvas[i].type == "simple") {
+						ctx.font = "400 " + fontSize + "px Roboto";
+						ctx.fillStyle = commentBodyColor;
+						ctx.fillText(linesForRealCanvas[i].text, 100, 332 + fontSize + (fontSize * 1.2) * i);
+					} else if (linesForRealCanvas[i].type == "complex") {
+						ctx.font = "400 " + fontSize + "px Roboto";
+						ctx.fillStyle = commentBodyColor;
+						ctx.fillText(linesForRealCanvas[i].text, 100, 332 + fontSize + (fontSize * 1.2) * i);
+
+						linesForRealCanvas[i].additionalEntities.forEach((additionalEntity, entityIndex) => {
+							if (additionalEntity.type == "emoji") {
+								ctx.fillStyle = "#FFFFFF";
+								ctx.fillRect(100 + additionalEntity.leftOffset + 12, 332 + (fontSize * 1.2) * i + 10, fontSize, fontSize);
+
+
+								imagesToDraw.push({
+									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+									width: fontSize,
+									height: fontSize,
+									x: 100 + additionalEntity.leftOffset + 12,
+									y: 332 + (fontSize * 1.2) * i + 10
+								});
+							};
+						});
+					};
 				};
 			};
 
 
 
-			let headerDeltaFix = -24;
 
 
+			let commentHeadLines = LocalGetLines(commentData.authorName, 1200, headFontSize, "700"),
+				commentHeadText = commentHeadLines[0];
 
-			ctx.fillStyle = "#444444";
-			ctx.font = "700 " + fontSize + "px Roboto";
+			if (commentHeadLines[1]) commentHeadText.text += "…";
 
-			let nameMetrics = ctx.measureText(commentData.authorName);
-			ctx.fillText(commentData.authorName, 300, 200 + (nameMetrics.actualBoundingBoxAscent + nameMetrics.actualBoundingBoxDescent) / 2 + headerDeltaFix);
+
+			const headTopPlacing = 216;
+
+
+			if (commentHeadText.type == "simple") {
+				ctx.font = "700 " + headFontSize + "px Roboto";
+				ctx.fillStyle = commentHeadColor;
+				ctx.fillText(commentHeadText.text, 350, headTopPlacing);
+			} else if (commentHeadText.type == "complex") {
+				ctx.font = "700 " + headFontSize + "px Roboto";
+				ctx.fillStyle = commentHeadColor;
+				ctx.fillText(commentHeadText.text, 350, headTopPlacing);
+
+
+				commentHeadText.additionalEntities.forEach((additionalEntity, entityIndex) => {
+					if (additionalEntity.type == "emoji") {
+						ctx.fillStyle = "#FFFFFF";
+						ctx.fillRect(additionalEntity.leftOffset + 350 + entityIndex * 26, headTopPlacing - headFontSize, 110, 110);
+
+
+						imagesToDraw.push({
+							url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+							width: 110,
+							height: 110,
+							x: additionalEntity.leftOffset + 350 + entityIndex * 26,
+							y: headTopPlacing - headFontSize
+						});
+					};
+				});
+			};
 
 
 
@@ -591,29 +751,38 @@ const GlobalBuildImages = (iComments) => {
 				karmaTextColor = "#07A23b";
 			};
 
-			ctx.fillStyle = karmaTextColor;
-			ctx.font = "700 " + fontSize + "px Roboto";
-
 			let karmaMetrics = ctx.measureText(commentData.likes),
 				karmaWidth = karmaMetrics.width,
 				karmaHeight = karmaMetrics.actualBoundingBoxAscent + karmaMetrics.actualBoundingBoxDescent;
 
 			ctx.fillStyle = karmaBackgroundColor;
-			ctx.fillRect(1900 - karmaWidth - 48 * 2, 200 - karmaHeight / 2 - 24 + headerDeltaFix, karmaWidth + 48 * 2, karmaHeight + 24 * 2);
+			ctx.fillRect(1900 - karmaWidth - 48 * 2, headTopPlacing - headFontSize, karmaWidth + 48 * 2, karmaHeight + 24 * 2);
 
 			ctx.fillStyle = karmaTextColor;
-			ctx.font = "700 " + fontSize + "px Roboto";
-			ctx.fillText(commentData.likes, 1900 - karmaWidth - 48, 200 + 24 + headerDeltaFix);
+			ctx.font = "700 " + headFontSize + "px Roboto";
+			ctx.fillText(commentData.likes, 1900 - karmaWidth - 48, headTopPlacing);
 
 
+
+			let userAvatarUrl = commentData.authorAvatar;
+			
+			try {
+				let userAvatarUrlObject = URL.parse(userAvatarUrl);
+
+				if (userAvatarUrlObject && userAvatarUrlObject.host === "leonardo.osnova.io") {
+					if (userAvatarUrl[userAvatarUrl.length - 1] !== "/") userAvatarUrl += "/";
+					userAvatarUrl += `-/scale_crop/340x340/center/`;
+				};
+			} catch (e) {};
 
 			imagesToDraw.push({
-				url: commentData.authorAvatar,
+				url: userAvatarUrl,
 				x: 100,
 				y: 100,
 				width: 170,
 				height: 170
 			});
+
 
 
 			LocalDrawAllImages().then(() => {
@@ -646,7 +815,7 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 	screensData.forEach((screenData) => {
 		ctx.replyWithPhoto({
 			source: screenData.buffer,
-			filename: `comment_halfsize_${screenData.commentID}.png`
+			filename: `comment_halfsize_${screenData.commentID}.jpeg`
 		}, {
 			caption: fullsize ? `<a href="${encodeURI(screenData.link)}">${TGE(screenData.link)}</a>` : "",
 			disable_web_page_preview: true,
@@ -656,7 +825,7 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 			if (fullsize) {
 				ctx.replyWithDocument({
 					source: screenData.buffer,
-					filename: `comment_full_${screenData.commentID}.png`
+					filename: `comment_full_${screenData.commentID}.jpeg`
 				}, {
 					disable_web_page_preview: true,
 					reply_to_message_id: ctx.message.message_id
