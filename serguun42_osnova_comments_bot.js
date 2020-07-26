@@ -58,21 +58,22 @@ const
 	};
 
 
-let telegramConnectionData = {},
-	fetchConnectionAdditionalOptions = {};
+let telegramConnectionData = {};
 
 
 if (DEV) {
 	const ProxyAgent = require("proxy-agent");
 
 	telegramConnectionData["agent"] = new ProxyAgent(CONFIG.PROXY_URL);
-	fetchConnectionAdditionalOptions = new ProxyAgent(CONFIG.PROXY_URL);
 };
 
 
 const
 	telegram = new Telegram(TELEGRAM_BOT_TOKEN, telegramConnectionData),
 	TOB = new Telegraf(TELEGRAM_BOT_TOKEN, { telegram: telegramConnectionData });
+
+
+
 
 
 /**
@@ -90,18 +91,6 @@ const GlobalParseQuery = iQuery => {
 	return cList;
 };
 
-const TGE = iStr => {
-	if (!iStr) return "";
-	
-	if (typeof iStr === "string")
-		return iStr
-			.replace(/\&/g, "&amp;")
-			.replace(/\</g, "&lt;")
-			.replace(/\>/g, "&gt;");
-	else
-		return TGE(iStr.toString());
-};
-
 const EmojiToUnicode = (emoji) => {
 	let comp;
 
@@ -117,6 +106,18 @@ const EmojiToUnicode = (emoji) => {
 	if (comp < 0) comp = emoji.charCodeAt(0);
 
 	return comp.toString("16");
+};
+
+const TGE = iStr => {
+	if (!iStr) return "";
+	
+	if (typeof iStr === "string")
+		return iStr
+			.replace(/\&/g, "&amp;")
+			.replace(/\</g, "&lt;")
+			.replace(/\>/g, "&gt;");
+	else
+		return TGE(iStr.toString());
 };
 
 /**
@@ -190,6 +191,8 @@ const TelegramSendToAdmin = (message) => {
 
 if (!DEV)
 	TelegramSendToAdmin(`serguun42's Osnova Comments Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
+
+
 
 
 
@@ -351,7 +354,6 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 	else
 		return reject({ code: "No comments" });
 });
-
 
 /**
  * @param {Array.<{host: string, entryID: number, commentID: number}>} iComments
