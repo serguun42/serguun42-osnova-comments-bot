@@ -692,14 +692,14 @@ const GlobalBuildImages = (iComments) => {
 						linesForRealCanvas[i].additionalEntities.forEach((additionalEntity, entityIndex) => {
 							if (additionalEntity.type == "emoji") {
 								ctx.fillStyle = "#FFFFFF";
-								ctx.fillRect(100 + additionalEntity.leftOffset + 12, 332 + (fontSize * 1.2) * i + 10, fontSize, fontSize);
+								ctx.fillRect(100 + additionalEntity.leftOffset, 332 + (fontSize * 1.2) * i + 10, fontSize * 1.2, fontSize * 1.2);
 
 
 								imagesToDraw.push({
 									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
-									width: fontSize,
-									height: fontSize,
-									x: 100 + additionalEntity.leftOffset + 12,
+									width: fontSize * 1.2,
+									height: fontSize * 1.2,
+									x: 100 + additionalEntity.leftOffset,
 									y: 332 + (fontSize * 1.2) * i + 10
 								});
 							};
@@ -734,14 +734,14 @@ const GlobalBuildImages = (iComments) => {
 				commentHeadText.additionalEntities.forEach((additionalEntity, entityIndex) => {
 					if (additionalEntity.type == "emoji") {
 						ctx.fillStyle = "#FFFFFF";
-						ctx.fillRect(additionalEntity.leftOffset + 350 + entityIndex * 26, headTopPlacing - headFontSize, 110, 110);
+						ctx.fillRect(additionalEntity.leftOffset + 350, headTopPlacing - headFontSize, 110, 110);
 
 
 						imagesToDraw.push({
 							url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
 							width: 110,
 							height: 110,
-							x: additionalEntity.leftOffset + 350 + entityIndex * 26,
+							x: additionalEntity.leftOffset + 350,
 							y: headTopPlacing - headFontSize
 						});
 					};
