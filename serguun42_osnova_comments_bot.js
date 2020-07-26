@@ -231,6 +231,15 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 	};
 
 
+	if (DEV) {
+		if (CHATS_LIST.reduce((accumulator, chatFromList) => {
+			if (chatFromList.id === chat["id"]) ++accumulator;
+			return accumulator;
+		}, 0) === 0)
+			console.log("NEW CHAT!", chat["id"]);
+	};
+
+
 	CHATS_LIST.forEach((chatFromList) => {
 		if (!chatFromList.enabled) return false;
 		if (chatFromList.id !== chat["id"]) return false;
