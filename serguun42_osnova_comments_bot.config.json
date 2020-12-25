@@ -39,5 +39,14 @@
 			"enabled": true
 		}
 	],
-	"PROXY_URL": "https://proxy.com:port"
+	"COMMANDS_WHITELIST": [
+		"admin",
+		"cool_user1",
+		"cool_user2"
+	],
+	"BLACKLIST": [
+		"bad_user1",
+		"and next is id for bad_user2",
+		1255723245
+	]
 }

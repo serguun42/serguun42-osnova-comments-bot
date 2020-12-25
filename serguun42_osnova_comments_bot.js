@@ -40,17 +40,24 @@ else
  * @property {{ "tjournal.ru": PlatformObject, "dtf.ru": PlatformObject, "vc.ru": PlatformObject }} CMTT_PLATFORMS
  * @property {{id: number, username: string}} ADMIN_TELEGRAM_DATA
  * @property {Array.<{id: number, name?: string, enabled: boolean, fullsize?: boolean}>} CHATS_LIST
- * @property {String} PROXY_URL
+ * @property {String[]} COMMANDS_WHITELIST
+ * @property {String[] | Number[]} BLACKLIST
  */
 /** @type {ConfigFile} */
 const
 	CONFIG = JSON.parse(fs.readFileSync("./serguun42_osnova_comments_bot.config.json")),
-	TELEGRAM_BOT_TOKEN = CONFIG.TELEGRAM_BOT_TOKEN,
-	ADMIN_TELEGRAM_DATA = CONFIG.ADMIN_TELEGRAM_DATA,
-	CHATS_LIST = CONFIG.CHATS_LIST,
+	{
+		TELEGRAM_BOT_TOKEN,
+		CMTT_PLATFORMS,
+		ADMIN_TELEGRAM_DATA,
+		CHATS_LIST,
+		COMMANDS_WHITELIST,
+		BLACKLIST
+	} = CONFIG,
+	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
 		"help": `Что я умею?
-	
+
 Вы добавляете меня в чат – я отвечаю на сообщения с ссылками на комментарий картинками и картинками-документами в высоком разрешении.
 В сообщении может быть несколько ссылок на комментарии с разных платформ – TJournal, DTF, VC.
 
@@ -58,19 +65,11 @@ const
 	};
 
 
-let telegramConnectionData = {};
-
-
-if (DEV) {
-	const ProxyAgent = require("proxy-agent");
-
-	telegramConnectionData["agent"] = new ProxyAgent(CONFIG.PROXY_URL);
-};
 
 
 const
-	telegram = new Telegram(TELEGRAM_BOT_TOKEN, telegramConnectionData),
-	TOB = new Telegraf(TELEGRAM_BOT_TOKEN, { telegram: telegramConnectionData });
+	telegram = new Telegram(TELEGRAM_BOT_TOKEN),
+	TOB = new Telegraf(TELEGRAM_BOT_TOKEN);
 
 
 
@@ -110,7 +109,7 @@ const EmojiToUnicode = (emoji) => {
 
 const TGE = iStr => {
 	if (!iStr) return "";
-	
+
 	if (typeof iStr === "string")
 		return iStr
 			.replace(/\&/g, "&amp;")
@@ -236,7 +235,7 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 			if (chatFromList.id === chat["id"]) ++accumulator;
 			return accumulator;
 		}, 0) === 0)
-			console.log("NEW CHAT!", chat["id"]);
+			console.log("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
 	};
 
 
@@ -256,7 +255,9 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 		if (commandMatch && commandMatch[1]) {
 			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
-
+			if (!CheckForCommandAvailability(from)) {
+				return false;
+			};
 
 			L({commandMatch});
 
@@ -282,6 +283,29 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 TOB.launch();
 
 
+
+/**
+ * @param {TelegramFromObject} from
+ * @returns {Boolean}
+ */
+const CheckForCommandAvailability = (from) => {
+	let pass = false;
+	if (from.username && COMMANDS_WHITELIST.includes(from.username))
+		pass = true;
+	else if ((from.username && BLACKLIST.includes(from.username)) || (from.id && BLACKLIST.includes(from.id)))
+		pass = false;
+	else {
+		let lastTimeCalled = COMMANDS_USAGE[from.id];
+			COMMANDS_USAGE[from.id] = Date.now();
+
+		if (!lastTimeCalled || typeof lastTimeCalled == "undefined")
+			pass = true;
+		else if ((Date.now() - lastTimeCalled) > 15 * 60 * 1e3)
+			pass = true;
+	};
+
+	return pass;
+};
 
 
 
@@ -310,44 +334,49 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 
 
 	message.entities.forEach((entity) => {
+		let urlFromEntity = "";
+
 		if (entity.type === "url") {
-			let urlEntityText = message.text.slice(entity.offset, entity.offset + entity.length);
+			urlFromEntity = message.text.slice(entity.offset, entity.offset + entity.length);
+		} else if (entity.type === "text_link") {
+			urlFromEntity = entity.url;
+		} else
+			return;
 
-			try {
-				let url = URL.parse(urlEntityText),
-					{ host, search, pathname } = url;
+		try {
+			let parsedURL = URL.parse(urlFromEntity),
+				{ host, search, pathname } = parsedURL;
 
-				if (search && pathname) {
-					if (search[0] === "?") search = search.slice(1);
+			if (search && pathname) {
+				if (search[0] === "?") search = search.slice(1);
 
-					let queries = GlobalParseQuery(search);
+				let queries = GlobalParseQuery(search);
 
-					if (queries["comment"] && parseInt(queries["comment"])) {
-						let entryID = 0,
-							splitted = pathname.split("/").filter(i => !!i);
+				if (queries["comment"] && parseInt(queries["comment"])) {
+					let entryID = 0,
+						splitted = pathname.split("/").filter(i => !!i);
 
-						if (parseInt(splitted[0])) entryID = parseInt(splitted[0]);
+					if (parseInt(splitted[0])) entryID = parseInt(splitted[0]);
 
-						if (splitted[0] === "u" || splitted[0] === "s") {
-							if (splitted[2] && parseInt(splitted[2])) entryID = parseInt(splitted[2]);
-						} else {
-							if (splitted[1] && parseInt(splitted[1])) entryID = parseInt(splitted[1]);
-						};
+					if (splitted[0] === "u" || splitted[0] === "s") {
+						if (splitted[2] && parseInt(splitted[2])) entryID = parseInt(splitted[2]);
+					} else {
+						if (splitted[1] && parseInt(splitted[1])) entryID = parseInt(splitted[1]);
+					};
 
 
-						if (entryID) {
-							comments.push({
-								host,
-								entryID: entryID,
-								commentID: parseInt(queries["comment"])
-							});
-						};
+					if (entryID) {
+						comments.push({
+							host,
+							entryID: entryID,
+							commentID: parseInt(queries["comment"])
+						});
 					};
 				};
-			} catch (e) {
-				L(e);
 			};
-		}
+		} catch (e) {
+			L(e);
+		};
 	});
 
 
@@ -370,11 +399,11 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
  */
 const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingReject) => {
 	L({ where: "GlobalGetComments", what: "list of comments to get data", iComments });
-	
-	
+
+
 	Promise.all(iComments.map((comment) => {
 		/** @type {PlatformObject} */
-		const platform = CONFIG.CMTT_PLATFORMS[comment.host];
+		const platform = CMTT_PLATFORMS[comment.host];
 
 		if (!platform) return Promise.resolve({ text: null, place: 1 });
 
@@ -526,7 +555,7 @@ const GlobalBuildImages = (iComments) => {
 
 						splittedByEmojies.forEach((partOfLine) => {
 							let leftOffset = metrics.reduce((accumulator, value) => accumulator + value, 0);
-							
+
 							if (EmojiRegexp.single.test(partOfLine)) {
 								if (DEV)
 									ctxForTest.font = fontSize + "px Segoe UI Emoji";
@@ -581,7 +610,7 @@ const GlobalBuildImages = (iComments) => {
 
 			/** @type {{url: string, x: number, y: number, width: number, height: number}[]} */
 			let imagesToDraw = [];
-			
+
 			/**
 			 * @returns {Promise.<"Successfull">}
 			 */
@@ -776,7 +805,7 @@ const GlobalBuildImages = (iComments) => {
 
 
 			let userAvatarUrl = commentData.authorAvatar;
-			
+
 			try {
 				let userAvatarUrlObject = URL.parse(userAvatarUrl);
 
