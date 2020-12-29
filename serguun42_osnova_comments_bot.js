@@ -857,7 +857,7 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 			source: screenData.buffer,
 			filename: `comment_halfsize_${screenData.commentID}.jpeg`
 		}, {
-			caption: fullsize ? `<a href="${encodeURI(screenData.link)}">${TGE(screenData.link)}</a>` : "",
+			caption: `<a href="${encodeURI(screenData.link)}">${TGE(screenData.link)}</a>`,
 			disable_web_page_preview: true,
 			parse_mode: "HTML",
 			reply_to_message_id: ctx.message.message_id
