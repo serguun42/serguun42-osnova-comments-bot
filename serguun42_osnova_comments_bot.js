@@ -210,11 +210,9 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		let commandMatch = text.match(/^\/([\w]+)(\@serguun42_osnova_comments_bot)?$/i);
+		const commandMatch = text.match(/^\/([\w]+)$/i);
 
 		if (commandMatch && commandMatch[1]) {
-			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
-
 			L({commandMatch});
 
 			if (typeof COMMANDS[commandMatch[1]] == "string")
@@ -251,7 +249,7 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 
 
 
-		let commandMatch = text.match(/^\/([\w]+)(\@serguun42_osnova_comments_bot)?$/i);
+		const commandMatch = text.match(/^\/([\w]+)\@serguun42_osnova_comments_bot$/i);
 
 		if (commandMatch && commandMatch[1]) {
 			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
