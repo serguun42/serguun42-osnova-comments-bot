@@ -8,12 +8,14 @@ const
 			if (typeof arg == "object") fs.writeFileSync("./out/errors.json", JSON.stringify(arg, false, "\t"));
 		};
 	},
-	{ createCanvas, loadImage, registerFont } = require("canvas"),
 	EmojiRegexp = require("./serguun42_osnova_comments_bot.emoji-regexp"),
 	NodeFetch = require("node-fetch"),
 	Telegraf = require("telegraf"),
 	Sessions = require("telegraf/session"),
 	Telegram = require("telegraf/telegram");
+
+
+const { createCanvas, loadImage, registerFont } = require("canvas");
 
 
 
@@ -56,7 +58,7 @@ const
 	COMMANDS = {
 		"help": `Что я умею?
 
-Вы добавляете меня в чат – на сообщения с ссылками на комментарий я отвечаю картинками и опционально картинками-документами в высоком разрешении.
+Вы добавляете меня в чат – я отвечаю на сообщения с ссылками на комментарий картинками и картинками-документами в высоком разрешении.
 В сообщении может быть несколько ссылок на комментарии с разных платформ – TJournal, DTF, VC.
 
 Все вопросы – <a href="https://t.me/${ADMIN_TELEGRAM_DATA.username}">${ADMIN_TELEGRAM_DATA.username}</a>`,
@@ -231,7 +233,7 @@ TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
 			if (chatFromList.id === chat["id"]) ++accumulator;
 			return accumulator;
 		}, 0) === 0)
-			L("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
+			console.log("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
 	};
 
 
@@ -613,7 +615,7 @@ const GlobalBuildImages = (iComments) => {
 			let LocalDrawAllImages = () => new Promise((resolveDrawingImages) => {
 				if (!imagesToDraw.length) return resolveDrawingImages("Successfull");
 
-				let doneImages = imagesToDraw.map(imageToDraw => false);
+				let doneImages = imagesToDraw.map(i => false);
 
 				imagesToDraw.forEach((imageToDraw, imageIndex) => {
 					loadImage(imageToDraw.url).then((imageReadyData) => {
@@ -646,29 +648,47 @@ const GlobalBuildImages = (iComments) => {
 			if (commentData.media && commentData.media.length) {
 				L({ where: "GlobalBuildImages", what: "commentData.media", media: commentData.media });
 
-				const MAX_IMAGE_HEIGHT = 1500;
-
 				commentData.media.forEach((media) => {
-					let widthForImage = media.size.width > 1800 ? 1800 : (media.size.width < 1500 ? 1500 : media.size.width),
-						heightForImage = widthForImage / media.size.ratio;
+					if (media.size.ratio < 1) {
+						let heightForImage = 700;
 
-					if (heightForImage > MAX_IMAGE_HEIGHT) {
-						heightForImage = MAX_IMAGE_HEIGHT;
-						widthForImage = heightForImage * media.size.ratio;
+						if (media.size.height < 700) heightForImage = media.size.height;
+
+						let widthForImage = heightForImage * media.size.ratio,
+							marginLeft = (1800 - widthForImage) / 2;
+
+
+						imagesToDraw.push({
+							url: media.url,
+							x: 100 + marginLeft,
+							y: heightForCanvas - 100 + 64,
+							height: heightForImage,
+							width: widthForImage
+						});
+
+						heightForCanvas += heightForImage + 64;
+					} else {
+						let widthForImage = 1800,
+							marginLeft = 0;
+
+						if (media.size.width < 1800) {
+							widthForImage = media.size.width;
+							marginLeft = (1800 - widthForImage) / 2;
+						};
+
+						let heightForImage = widthForImage / media.size.ratio;
+
+
+						imagesToDraw.push({
+							url: media.url,
+							x: 100 + marginLeft,
+							y: heightForCanvas - 100 + 64,
+							height: heightForImage,
+							width: widthForImage
+						});
+
+						heightForCanvas += heightForImage + 64;
 					};
-
-					let marginLeft = (1800 - widthForImage) / 2;
-
-
-					imagesToDraw.push({
-						url: media.url,
-						x: 100 + marginLeft,
-						y: heightForCanvas - 100 + 64,
-						height: heightForImage,
-						width: widthForImage
-					});
-
-					heightForCanvas += heightForImage + 64;
 				});
 			};
 
