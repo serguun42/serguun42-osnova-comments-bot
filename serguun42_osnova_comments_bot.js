@@ -618,7 +618,8 @@ const GlobalBuildImages = (iComments) => {
 
 
 				return linesForReturn.map((complexMiddleLine) => {
-					const { lineText, additionalEntities } = complexMiddleLine;
+					const { additionalEntities } = complexMiddleLine;
+					let { lineText } = complexMiddleLine;
 
 
 					if (EmojiRegexp.global.test(lineText)) {
@@ -829,7 +830,8 @@ const GlobalBuildImages = (iComments) => {
 				});
 			};
 
-			const day = 86400e3,
+			const diff = 3600e3 * 3,
+				  day = 86400e3,
 				  months = [
 					  "янв",
 					  "фев",
@@ -845,7 +847,7 @@ const GlobalBuildImages = (iComments) => {
 					  "дек"
 				  ],
 				  dateDiff = Date.now() - commentData.date,
-				  dateObject = new Date(commentData.date),
+				  dateObject = new Date(commentData.date + diff),
 				  isToday = (commentData.date - commentData.date % day) === (Date.now() - Date.now() % day),
 				  isYesterday = (commentData.date - commentData.date % day) === (Date.now() - Date.now() % day - day),
 				  timeString = `${dateObject.getHours().toString().padStart(2, "0")}:${dateObject.getMinutes().toString().padStart(2, "0")}`,
