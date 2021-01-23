@@ -316,6 +316,7 @@ const CheckForCommandAvailability = (from) => {
  * @property {String} likes
  * @property {String} text
  * @property {String} date
+ * @property {String} [replyToName]
  * @property {{url: string, size: {width: number, height: number, ratio: number}}[]} [media]
  */
 /**
@@ -327,7 +328,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 
 
 	/**
-	 * @type {Array.<{host: string, entryID: number, commentID: number}>}
+	 * @type {Array.<{host: string, entryID: number, commentID: number, hideReply?: boolean}>}
 	 */
 	let comments = [];
 
@@ -349,7 +350,8 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 			if (search && pathname) {
 				if (search[0] === "?") search = search.slice(1);
 
-				let queries = GlobalParseQuery(search);
+				let queries = GlobalParseQuery(search),
+					hideReply = false;
 
 				if (queries["comment"] && parseInt(queries["comment"])) {
 					let entryID = 0,
@@ -362,13 +364,17 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 					} else {
 						if (splitted[1] && parseInt(splitted[1])) entryID = parseInt(splitted[1]);
 					};
+					
+
+					if (queries["h"]) hideReply = true;
 
 
 					if (entryID) {
 						comments.push({
 							host,
 							entryID: entryID,
-							commentID: parseInt(queries["comment"])
+							commentID: parseInt(queries["comment"]),
+							hideReply
 						});
 					};
 				};
@@ -393,7 +399,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 });
 
 /**
- * @param {Array.<{host: string, entryID: number, commentID: number}>} iComments
+ * @param {Array.<{host: string, entryID: number, commentID: number, hideReply?: boolean}>} iComments
  * @returns {Promise.<CommentData[], {code: string}>}
  */
 const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingReject) => {
@@ -434,6 +440,7 @@ const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingRej
 							likes: commentFromAPI.likes.summ,
 							text: commentFromAPI.text,
 							date: commentFromAPI.date * 1e3,
+							replyToName: (commentFromAPI.replyTo && !comment.hideReply) ? result.find((commentFromAPIToMatch) => commentFromAPIToMatch.id === commentFromAPI.replyTo) || "" : "",
 							...((commentFromAPI.media && commentFromAPI.media.length) ? {
 								media: commentFromAPI.media.map(({ imageUrl, size }) => {
 									return { url: imageUrl, size };
@@ -468,7 +475,7 @@ const GlobalBuildImages = (iComments) => {
 	return new Promise((resolve) => {
 		iComments.forEach((commentData, commentIndex) => {
 			const
-				fontSize = commentData.text && commentData.text.length > 100 ? 64 : 84,
+				fontSize = commentData.text && commentData.text.length > 20 ? 64 : 84,
 				commentBodyColor = "#121212",
 				headFontSize = 84,
 				commentHeadColor = "#444444",
@@ -778,10 +785,10 @@ const GlobalBuildImages = (iComments) => {
 
 								imagesToDraw.push({
 									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
-									width: fontSize * 1.2,
-									height: fontSize * 1.2,
+									width: fontSize,
+									height: fontSize,
 									x: 100 + additionalEntity.leftOffset,
-									y: 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10
+									y: 332 + fontSize * lineForRealCanvasIndex + 10
 								});
 							};
 						});
@@ -821,8 +828,8 @@ const GlobalBuildImages = (iComments) => {
 
 						imagesToDraw.push({
 							url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
-							width: 110,
-							height: 110,
+							width: 90,
+							height: 90,
 							x: additionalEntity.leftOffset + 350,
 							y: headTopPlacing - headFontSize
 						});
@@ -872,6 +879,53 @@ const GlobalBuildImages = (iComments) => {
 			ctx.font = `300 ${dateFontSize}px "Roboto Light"`;
 			ctx.fillStyle = commentHeadDateColor;
 			ctx.fillText(dateString, 350, 250);
+
+
+			if (commentData.replyToName) {
+				const replyToName = typeof commentData.replyToName === "string" ? commentData.replyToName : commentData.replyToName?.author?.name;
+
+				if (replyToName) {
+					const dateStringWidth = ctx.measureText(dateString).width,
+						  replyToNameLines = LocalGetLines(replyToName, 1000, dateFontSize, "300"),
+						  replyToNameText = replyToNameLines[0],
+						  offsetForReplyToNameText = 350 + dateStringWidth + 50 + 34 + 16;
+
+					imagesToDraw.push({
+						url: "./fonts/reply_icon.png",
+						width: 42,
+						height: 42,
+						x: 350 + dateStringWidth + 50,
+						y: 250 - 42 + 4
+					});
+
+					if (replyToNameText.type == "simple") {
+						ctx.font = `300 ${dateFontSize}px "Roboto Light"`;
+						ctx.fillStyle = commentHeadDateColor;
+						ctx.fillText(replyToNameText.text, offsetForReplyToNameText, 250);
+					} else if (replyToNameText.type == "complex") {
+						ctx.font = `300 ${dateFontSize}px "Roboto Light"`;
+						ctx.fillStyle = commentHeadDateColor;
+						ctx.fillText(replyToNameText.text, offsetForReplyToNameText, 250);
+
+
+						replyToNameText.additionalEntities.forEach((additionalEntity) => {
+							if (additionalEntity.type == "emoji") {
+								ctx.fillStyle = "#FFFFFF";
+								ctx.fillRect(additionalEntity.leftOffset + offsetForReplyToNameText - 4, 250 - dateFontSize, dateFontSize * 1.2, dateFontSize * 1.2);
+
+
+								imagesToDraw.push({
+									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+									width: dateFontSize,
+									height: dateFontSize,
+									x: additionalEntity.leftOffset + offsetForReplyToNameText,
+									y: 250 - dateFontSize + 2
+								});
+							};
+						});
+					};
+				};
+			};
 
 
 			let karmaBackgroundColor = "#DDDDDD",
@@ -927,7 +981,7 @@ const GlobalBuildImages = (iComments) => {
 				PNGsData[commentIndex] = {
 					link: commentData.link,
 					commentID: commentData.commentID,
-					buffer: canvas.toBuffer("image/jpeg", { quality: 0.85 })
+					buffer: canvas.toBuffer("image/jpeg", { quality: 1, progressive: true })
 				};
 
 				if (PNGsData.reduce((accumulator, current) => {
