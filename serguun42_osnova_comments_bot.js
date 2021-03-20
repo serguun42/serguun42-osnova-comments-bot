@@ -1,13 +1,6 @@
 const
-	URL = require("url"),
 	fs = require("fs"),
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	L = function(arg) {
-		if (DEV) {
-			console.log(...arguments);
-			if (typeof arg == "object") fs.writeFileSync("./out/errors.json", JSON.stringify(arg, false, "\t"));
-		};
-	},
 	{ createCanvas, loadImage, registerFont } = require("canvas"),
 	EmojiRegexp = require("./serguun42_osnova_comments_bot.emoji-regexp"),
 	MentionRegexp = {
@@ -16,9 +9,7 @@ const
 		groupAndGlobal: /\[\@\d+\|([^\]]+)\]/g
 	},
 	NodeFetch = require("node-fetch"),
-	Telegraf = require("telegraf"),
-	Sessions = require("telegraf/session"),
-	Telegram = require("telegraf/telegram");
+	Telegraf = require("telegraf");
 
 
 
@@ -70,28 +61,32 @@ const
 
 
 
-
-const
-	telegram = new Telegram(TELEGRAM_BOT_TOKEN),
-	TOB = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-
+const telegraf = new Telegraf.Telegraf(TELEGRAM_BOT_TOKEN);
+const telegram = telegraf.telegram;
 
 
 
 /**
  * @param {String} iQuery
- * @returns {Object.<string, (string|true)>}
+ * @returns {{[queryName: string]: string | true}}
  */
 const GlobalParseQuery = iQuery => {
 	if (!iQuery) return {};
 
-	let cList = new Object();
-		iQuery = iQuery.toString().split("&");
+	const returningList = {};
 
-	iQuery.forEach((item)=>{ cList[item.split("=")[0]] = (item.split("=")[1] || true); });
+	iQuery.toString().replace(/^\?/, "").split("&").forEach((queryPair) => {
+		try {
+			if (queryPair.split("=")[1])
+				returningList[queryPair.split("=")[0]] = decodeURIComponent(queryPair.split("=")[1]);
+			else
+				returningList[queryPair.split("=")[0]] = true;
+		} catch (e) {
+			returningList[queryPair.split("=")[0]] = (queryPair.split("=")[1] || true);
+		};
+	});
 
-	return cList;
+	return returningList;
 };
 
 const EmojiToUnicode = (emoji) => {
@@ -110,177 +105,6 @@ const EmojiToUnicode = (emoji) => {
 
 	return comp.toString("16");
 };
-
-const TGE = iStr => {
-	if (!iStr) return "";
-
-	if (typeof iStr === "string")
-		return iStr
-			.replace(/\&/g, "&amp;")
-			.replace(/\</g, "&lt;")
-			.replace(/\>/g, "&gt;");
-	else
-		return TGE(iStr.toString());
-};
-
-/**
- * @typedef {Object} TelegramFromObject
- * @property {Number} id
- * @property {String} first_name
- * @property {String} username
- * @property {Boolean} is_bot
- * @property {String} language_code
- * 
- * @typedef {Object} TelegramChatObject
- * @property {Number} id
- * @property {String} title
- * @property {String} type
- * 
- * @typedef {Object} TelegramPhotoObj
- * @property {String} file_id
- * @property {String} file_unique_id
- * @property {Number} file_size
- * @property {Number} width
- * @property {Number} height
- * 
- * @typedef {Object} TelegramMessageObject
- * @property {Number} message_id
- * @property {String} text
- * @property {TelegramFromObject} from
- * @property {TelegramChatObject} chat
- * @property {Number} date
- * @property {Array.<{offset: Number, length: Number, type: String}>} [entities]
- * @property {TelegramPhotoObj[]} [photo]
- * @property {TelegramMessageObject} [reply_to_message]
- * @property {{inline_keyboard: Array.<Array.<{text: string, callback_data: string, url: string}>>}} [reply_markup]
- * @property {String} [caption]
- * 
- * @typedef {Object} TelegramUpdateObject
- * @property {Number} update_id
- * @property {TelegramMessageObject} message
- * 
- * @typedef {Object} TelegramContext
- * @property {Object} telegram 
- * @property {String} updateType 
- * @property {Object} [updateSubTypes] 
- * @property {TelegramMessageObject} [message] 
- * @property {Object} [editedMessage] 
- * @property {Object} [inlineQuery] 
- * @property {Object} [chosenInlineResult] 
- * @property {Object} [callbackQuery] 
- * @property {Object} [shippingQuery] 
- * @property {Object} [preCheckoutQuery] 
- * @property {Object} [channelPost] 
- * @property {Object} [editedChannelPost] 
- * @property {Object} [poll] 
- * @property {Object} [pollAnswer] 
- * @property {TelegramChatObject} [chat] 
- * @property {TelegramFromObject} [from] 
- * @property {Object} [match] 
- * @property {TelegramUpdateObject} [update] 
- * @property {Boolean} webhookReply
- */
-/**
- * @param {String} message
- */
-const TelegramSendToAdmin = (message) => {
-	if (!message) return;
-
-	telegram.sendMessage(ADMIN_TELEGRAM_DATA.id, message, {
-		parse_mode: "HTML",
-		disable_notification: true
-	}).then(L).catch(L);
-};
-
-if (!DEV)
-	TelegramSendToAdmin(`serguun42's Osnova Comments Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
-
-
-
-
-
-TOB.use(Sessions());
-
-TOB.on("text", /** @param {TelegramContext} ctx */ (ctx) => {
-	const {chat, from} = ctx;
-
-
-	if (chat && chat["type"] === "private") {
-		const message = ctx["message"];
-		if (!message) return false;
-
-		const text = message["text"];
-		if (!text) return false;
-
-
-
-		const commandMatch = text.match(/^\/([\w]+)$/i);
-
-		if (commandMatch && commandMatch[1]) {
-			if (typeof COMMANDS[commandMatch[1]] == "string")
-				return ctx.reply(COMMANDS[commandMatch[1]], {
-					disable_web_page_preview: true,
-					parse_mode: "HTML"
-				}).then(L).catch(L);
-			else if (typeof COMMANDS[commandMatch[1]] == "function")
-				return COMMANDS[commandMatch[1]](ctx);
-		};
-
-		return false;
-	};
-
-
-	if (DEV) {
-		if (CHATS_LIST.reduce((accumulator, chatFromList) => {
-			if (chatFromList.id === chat["id"]) ++accumulator;
-			return accumulator;
-		}, 0) === 0)
-			L("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
-	};
-
-
-	CHATS_LIST.forEach((chatFromList) => {
-		if (!chatFromList.enabled) return false;
-		if (chatFromList.id !== chat["id"]) return false;
-
-		const message = ctx["message"];
-		if (!message) return false;
-
-		const text = message["text"];
-		if (!text) return false;
-
-
-
-		const commandMatch = text.match(/^\/([\w]+)\@serguun42_osnova_comments_bot$/i);
-
-		if (commandMatch && commandMatch[1]) {
-			telegram.deleteMessage(chat.id, message.message_id).then(L).catch(L);
-			if (!CheckForCommandAvailability(from)) {
-				return false;
-			};
-
-			if (typeof COMMANDS[commandMatch[1]] == "string")
-				return ctx.reply(COMMANDS[commandMatch[1]], {
-					disable_web_page_preview: true,
-					parse_mode: "HTML"
-				}).then(L).catch(L);
-			else if (typeof COMMANDS[commandMatch[1]] == "function")
-				return COMMANDS[commandMatch[1]](ctx);
-		};
-
-
-
-		GlobalCheckMessageForLink(message)
-			.then((commentsID) => GlobalGetComments(commentsID))
-			.then((commentsData) => GlobalBuildImages(commentsData))
-			.then((commentsImages) => GlobalReplyWithImages(ctx, commentsImages, chatFromList.fullsize))
-			.catch(L);
-	});
-});
-
-TOB.launch();
-
-
 
 /**
  * @param {TelegramFromObject} from
@@ -305,7 +129,21 @@ const CheckForCommandAvailability = (from) => {
 	return pass;
 };
 
+/**
+ * @param  {Error[] | String[]} args
+ * @returns {void}
+ */
+const LogMessageOrError = (...args) => {
+	const containsAnyError = (args.findIndex((message) => message instanceof Error) > -1),
+		  out = (containsAnyError ? console.error : console.log);
 
+	out(new Date());
+	args.forEach((message) => out(message));
+	out("~~~~~~~~~~~\n\n");
+
+
+	if (DEV) fs.writeFile("./out/logmessageorerror.json", JSON.stringify([...args], false, "\t"), () => {});
+};
 
 /**
  * @typedef {Object} CommentData
@@ -320,17 +158,24 @@ const CheckForCommandAvailability = (from) => {
  * @property {{url: string, size: {width: number, height: number, ratio: number}}[]} [media]
  */
 /**
+ * @typedef {Object} ParsedCommentData
+ * @property {String} host
+ * @property {Number} entryID
+ * @property {Number} commentID
+ * @property {Boolean} hideReply
+ */
+/**
  * @param {TelegramMessageObject} message
- * @returns {Promise.<Array.<{host: string, entryID: number, commentID: number}>, {code: string}>}
+ * @returns {Promise<ParsedCommentData[]>, { code: String }>}
  */
 const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => {
 	if (!message.entities || !message.entities.length) return reject({ code: "No URLs in message" });
 
 
 	/**
-	 * @type {Array.<{host: string, entryID: number, commentID: number, hideReply?: boolean}>}
+	 * @type {ParsedCommentData[]}
 	 */
-	let comments = [];
+	const parsedCommentsData = [];
 
 
 	message.entities.forEach((entity) => {
@@ -344,14 +189,12 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 			return;
 
 		try {
-			let parsedURL = URL.parse(urlFromEntity),
+			const parsedURL = new URL(urlFromEntity),
 				{ host, search, pathname } = parsedURL;
 
 			if (search && pathname) {
-				if (search[0] === "?") search = search.slice(1);
-
-				let queries = GlobalParseQuery(search),
-					hideReply = false;
+				const queries = GlobalParseQuery(search);
+				let hideReply = false;
 
 				if (queries["comment"] && parseInt(queries["comment"])) {
 					let entryID = 0,
@@ -370,7 +213,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 
 
 					if (entryID) {
-						comments.push({
+						parsedCommentsData.push({
 							host,
 							entryID: entryID,
 							commentID: parseInt(queries["comment"]),
@@ -385,21 +228,21 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 	});
 
 
-	comments = comments.filter((comment, index) => {
+	const parsedCommentsDataFiltered = parsedCommentsData.filter((comment, index) => {
 		if (!comment.entryID || !comment.commentID) return false;
 
-		return comments.findIndex((commentToFind) => commentToFind.commentID === comment.commentID) === index;
+		return parsedCommentsData.findIndex((commentToFind) => commentToFind.commentID === comment.commentID) === index;
 	});
 
 
-	if (comments.length)
-		return resolve(comments);
+	if (parsedCommentsDataFiltered.length)
+		return resolve(parsedCommentsDataFiltered);
 	else
 		return reject({ code: "No comments" });
 });
 
 /**
- * @param {Array.<{host: string, entryID: number, commentID: number, hideReply?: boolean}>} iComments
+ * @param {ParsedCommentData[]} iComments
  * @returns {Promise.<CommentData[], {code: string}>}
  */
 const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingReject) => {
@@ -462,7 +305,7 @@ const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingRej
 			commentsData
 				.filter((commentData) => commentData.text !== null)
 		);
-	}).catch((e) => gettingReject(e));
+	}).catch(gettingReject);
 });
 
 /**
@@ -797,7 +640,7 @@ const GlobalBuildImages = (iComments) => {
 			};
 
 
-			let commentHeadLines = LocalGetLines(commentData.authorName, 1200, headFontSize, "700"),
+			let commentHeadLines = LocalGetLines(commentData.authorName, 1240, headFontSize, "700"),
 				commentHeadText = commentHeadLines[0];
 
 			if (commentHeadLines[1]) commentHeadText.text += "…";
@@ -959,7 +802,7 @@ const GlobalBuildImages = (iComments) => {
 			let userAvatarUrl = commentData.authorAvatar;
 
 			try {
-				let userAvatarUrlObject = URL.parse(userAvatarUrl);
+				const userAvatarUrlObject = new URL(userAvatarUrl);
 
 				if (userAvatarUrlObject && userAvatarUrlObject.host === "leonardo.osnova.io") {
 					if (userAvatarUrl[userAvatarUrl.length - 1] !== "/") userAvatarUrl += "/";
@@ -1026,3 +869,120 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 		}).catch(console.warn);
 	});
 };
+
+
+const TGE = iStr => {
+	if (!iStr) return "";
+
+	if (typeof iStr === "string")
+		return iStr
+			.replace(/\&/g, "&amp;")
+			.replace(/\</g, "&lt;")
+			.replace(/\>/g, "&gt;");
+	else
+		return TGE(iStr.toString());
+};
+
+/**
+ * @param {String} message
+ */
+const TelegramSendToAdmin = (message) => {
+	if (!message) return;
+
+	telegram.sendMessage(ADMIN_TELEGRAM_DATA.id, message, {
+		parse_mode: "HTML",
+		disable_notification: true
+	}).catch(LogMessageOrError);
+};
+
+if (!DEV)
+	TelegramSendToAdmin(`serguun42's Osnova Comments Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
+
+
+
+
+
+telegraf.on("text", (ctx) => {
+	const {chat, from} = ctx;
+
+
+	if (chat && chat["type"] === "private") {
+		const message = ctx["message"];
+		if (!message) return false;
+
+		console.log(`Private chat with user ${from.id} (@${from.username || "NO_USERNAME"}) - ${new Date().toISOString()}. Text: ${message["text"]}`);
+
+		const text = message["text"];
+		if (!text) return false;
+
+
+
+		const commandMatch = text.match(/^\/([\w]+)$/i);
+
+		if (commandMatch && commandMatch[1]) {
+			if (typeof COMMANDS[commandMatch[1]] == "string")
+				return ctx.reply(COMMANDS[commandMatch[1]], {
+					disable_web_page_preview: true,
+					parse_mode: "HTML"
+				}).catch(LogMessageOrError);
+			else if (typeof COMMANDS[commandMatch[1]] == "function")
+				return COMMANDS[commandMatch[1]](ctx);
+		};
+
+		return false;
+	};
+
+
+	if (DEV) {
+		if (CHATS_LIST.reduce((accumulator, chatFromList) => {
+			if (chatFromList.id === chat["id"]) ++accumulator;
+			return accumulator;
+		}, 0) === 0)
+			LogMessageOrError("NEW CHAT!", chat["id"], chat["title"], chat["type"]);
+	};
+
+
+	CHATS_LIST.forEach((chatFromList) => {
+		if (!chatFromList.enabled) return false;
+		if (chatFromList.id !== chat["id"]) return false;
+
+		const message = ctx["message"];
+		if (!message) return false;
+
+		const text = message["text"];
+		if (!text) return false;
+
+
+
+		const commandMatch = text.match(/^\/([\w]+)\@serguun42_osnova_comments_bot$/i);
+
+		if (commandMatch && commandMatch[1]) {
+			if (!CheckForCommandAvailability(from)) {
+				return false;
+			};
+
+			telegram.deleteMessage(chat.id, message.message_id).catch(LogMessageOrError);
+
+			if (typeof COMMANDS[commandMatch[1]] == "string")
+				return ctx.reply(COMMANDS[commandMatch[1]], {
+					disable_web_page_preview: true,
+					parse_mode: "HTML"
+				}).catch(LogMessageOrError);
+			else if (typeof COMMANDS[commandMatch[1]] == "function")
+				return COMMANDS[commandMatch[1]](ctx);
+		};
+
+
+
+		GlobalCheckMessageForLink(message)
+			.then((commentsID) => GlobalGetComments(commentsID))
+			.then((commentsData) => GlobalBuildImages(commentsData))
+			.then((commentsImages) => GlobalReplyWithImages(ctx, commentsImages, chatFromList.fullsize))
+			.catch((...errors) => {
+				if (!(errors && errors[0] && (errors[0].code === "No comments" || errors[0].code === "No URLs in message")))
+					LogMessageOrError(...errors);
+			});
+	});
+});
+
+telegraf.launch();

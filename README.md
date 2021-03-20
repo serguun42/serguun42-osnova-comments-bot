@@ -6,9 +6,15 @@ Telegram бот. В общем чате в ответ на сообщения с
 
 
 Модули, которые использует `serguun42_osnova_comments_bot.js` (можете установить их через `npm`, `yarn`, etc.):
-* Telegraf
-* node-fetch
-* canvas
+* `telegraf`
+* `node-fetch`
+* `canvas`
+
+
+## Commands
+
+* `npm install`
+* `npm run start_bot`
 
 
 ## Fonts – by Google
