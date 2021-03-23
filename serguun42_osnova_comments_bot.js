@@ -222,9 +222,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 					};
 				};
 			};
-		} catch (e) {
-			console.warn(e);
-		};
+		} catch (e) {};
 	});
 
 
@@ -296,7 +294,7 @@ const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingRej
 
 			return Promise.resolve(dataToResolve);
 		}).catch((e) => {
-			console.warn(e);
+			LogMessageOrError(e);
 
 			return Promise.resolve({ text: null, place: 4 });
 		});
@@ -545,7 +543,7 @@ const GlobalBuildImages = (iComments) => {
 					loadImage(imageToDraw.url).then((imageReadyData) => {
 						ctx.drawImage(imageReadyData, imageToDraw.x, imageToDraw.y, imageToDraw.width, imageToDraw.height);
 					})
-					.catch(console.warn)
+					.catch(LogMessageOrError)
 					.finally(() => {
 						drawnImages[imageIndex] = true;
 
@@ -864,12 +862,11 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 				}, {
 					disable_web_page_preview: true,
 					reply_to_message_id: ctx.message.message_id
-				}).then(() => {}).catch(console.warn);
+				}).catch(LogMessageOrError);
 			};
-		}).catch(console.warn);
+		}).catch(LogMessageOrError);
 	});
 };
-
 
 const TGE = iStr => {
 	if (!iStr) return "";
@@ -910,7 +907,7 @@ telegraf.on("text", (ctx) => {
 		const message = ctx["message"];
 		if (!message) return false;
 
-		console.log(`Private chat with user ${from.id} (@${from.username || "NO_USERNAME"}) - ${new Date().toISOString()}. Text: ${message["text"]}`);
+		LogMessageOrError(`Private chat with user ${from.id} (@${from.username || "NO_USERNAME"}) - ${new Date().toISOString()}. Text: ${message["text"]}`);
 
 		const text = message["text"];
 		if (!text) return false;
