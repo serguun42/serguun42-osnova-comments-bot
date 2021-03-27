@@ -107,7 +107,7 @@ const EmojiToUnicode = (emoji) => {
 };
 
 /**
- * @param {TelegramFromObject} from
+ * @param {import("telegraf/typings/core/types/typegram").User} from
  * @returns {Boolean}
  */
 const CheckForCommandAvailability = (from) => {
@@ -241,7 +241,7 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 
 /**
  * @param {ParsedCommentData[]} iComments
- * @returns {Promise.<CommentData[], {code: string}>}
+ * @returns {Promise<CommentData[], {code: string}>}
  */
 const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingReject) => {
 	Promise.all(iComments.map((comment) => {
@@ -365,7 +365,7 @@ const GlobalBuildImages = (iComments) => {
 				const allEmojiesFromMessage = Array.from(text.match(EmojiRegexp.global) || []);
 				let emojiIndex = 0;
 
-				text = text.replace(EmojiRegexp.global, "😀");
+				text = text.replace(EmojiRegexp.global, "😍");
 
 
 				const linesSplittedByChar = text.split("\n");
@@ -621,7 +621,7 @@ const GlobalBuildImages = (iComments) => {
 								ctx.closePath();
 							} else if (additionalEntity.type == "emoji") {
 								ctx.fillStyle = "#FFFFFF";
-								ctx.fillRect(100 + additionalEntity.leftOffset, 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10, fontSize * 1.2, fontSize * 1.2);
+								ctx.fillRect(100 + additionalEntity.leftOffset, 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10, fontSize + 10, fontSize * 1.2);
 
 
 								imagesToDraw.push({
@@ -629,7 +629,7 @@ const GlobalBuildImages = (iComments) => {
 									width: fontSize,
 									height: fontSize,
 									x: 100 + additionalEntity.leftOffset,
-									y: 332 + fontSize * lineForRealCanvasIndex + 10
+									y: 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10
 								});
 							};
 						});
@@ -837,7 +837,7 @@ const GlobalBuildImages = (iComments) => {
 };
 
 /**
- * @param {TelegramContext} ctx
+ * @param {import("telegraf").Context} ctx
  * @param {{buffer: Buffer, link: string, commentID: number}[]} screensData
  * @param {Boolean} [fullsize=false]
  */
@@ -854,7 +854,9 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 			disable_web_page_preview: true,
 			parse_mode: "HTML",
 			reply_to_message_id: ctx.message.message_id
-		}).then(() => {
+		})
+		.catch(LogMessageOrError)
+		.finally(() => {
 			if (fullsize) {
 				ctx.replyWithDocument({
 					source: screenData.buffer,
@@ -864,7 +866,7 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 					reply_to_message_id: ctx.message.message_id
 				}).catch(LogMessageOrError);
 			};
-		}).catch(LogMessageOrError);
+		});
 	});
 };
 
