@@ -1,5 +1,7 @@
 const
 	fs = require("fs"),
+	http = require("http"),
+	{ join } = require("path"),
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
 	{ createCanvas, loadImage, registerFont } = require("canvas"),
 	EmojiRegexp = require("./serguun42_osnova_comments_bot.emoji-regexp"),
@@ -23,31 +25,19 @@ else
 	registerFont("./fonts/NotoColorEmoji.ttf", { family: "Noto Color Emoji" });
 
 
-/**
- * @typedef {Object} PlatformObject
- * @property {String} token
- * @property {String} apiURL
- * @property {String} userAgent
- * 
- * 
- * @typedef {Object} ConfigFile
- * @property {String} TELEGRAM_BOT_TOKEN
- * @property {{ "tjournal.ru": PlatformObject, "dtf.ru": PlatformObject, "vc.ru": PlatformObject }} CMTT_PLATFORMS
- * @property {{id: number, username: string}} ADMIN_TELEGRAM_DATA
- * @property {Array.<{id: number, name?: string, enabled: boolean, fullsize?: boolean}>} CHATS_LIST
- * @property {String[]} COMMANDS_WHITELIST
- * @property {String[] | Number[]} BLACKLIST
- */
-/** @type {ConfigFile} */
+
 const
-	CONFIG = require("./serguun42_osnova_comments_bot.config.json"),
+	CONFIG = DEV ? require("./serguun42_osnova_comments_bot.config.mine.json") : require("./serguun42_osnova_comments_bot.config.json"),
 	{
 		TELEGRAM_BOT_TOKEN,
 		CMTT_PLATFORMS,
 		ADMIN_TELEGRAM_DATA,
 		CHATS_LIST,
 		COMMANDS_WHITELIST,
-		BLACKLIST
+		BLACKLIST,
+		LOCAL_SERVER_PORT,
+		DUMPING_FOLDER,
+		LOCAL_HTTP_BYPASS_SERVER_PORT
 	} = CONFIG,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
@@ -61,7 +51,11 @@ const
 
 
 
-const telegraf = new Telegraf.Telegraf(TELEGRAM_BOT_TOKEN);
+const telegraf = new Telegraf.Telegraf(TELEGRAM_BOT_TOKEN, DEV ? {} : LOCAL_SERVER_PORT ? {
+	telegram: {
+		apiRoot: `http://127.0.0.1:${LOCAL_SERVER_PORT}`
+	}
+} : {});
 const telegram = telegraf.telegram;
 
 
@@ -151,9 +145,10 @@ const LogMessageOrError = (...args) => {
  * @property {Number} commentID
  * @property {String} authorAvatar
  * @property {String} authorName
+ * @property {String} authorID
  * @property {String} likes
  * @property {String} text
- * @property {String} date
+ * @property {Number} date
  * @property {String} [replyToName]
  * @property {{url: string, size: {width: number, height: number, ratio: number}}[]} [media]
  */
@@ -311,7 +306,7 @@ const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingRej
  * @returns {Promise.<{buffer: Buffer, link: string, commentID: number}[], {code: string}>}
  */
 const GlobalBuildImages = (iComments) => {
-	let PNGsData = new Array(iComments.length).fill(false);
+	const PNGsData = new Array(iComments.length).fill(false);
 
 	return new Promise((resolve) => {
 		iComments.forEach((commentData, commentIndex) => {
@@ -825,10 +820,7 @@ const GlobalBuildImages = (iComments) => {
 					buffer: canvas.toBuffer("image/jpeg", { quality: 1, progressive: true })
 				};
 
-				if (PNGsData.reduce((accumulator, current) => {
-					if (current === false) accumulator += 1;
-					return accumulator;
-				}, 0) === 0) {
+				if (PNGsData.reduce((accumulator, current) => accumulator + !current, 0) === 0) {
 					return resolve(PNGsData);
 				};
 			});
@@ -846,6 +838,11 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 
 
 	screensData.forEach((screenData) => {
+		if (DUMPING_FOLDER) {
+			fs.writeFile(join(DUMPING_FOLDER, `comment_${screenData.commentID}_${Date.now()}`), screenData.buffer, (e) => e && LogMessageOrError(e));
+		}
+
+
 		ctx.replyWithPhoto({
 			source: screenData.buffer,
 			filename: `comment_halfsize_${screenData.commentID}.jpeg`
@@ -895,9 +892,126 @@ const TelegramSendToAdmin = (message) => {
 };
 
 if (!DEV)
-	TelegramSendToAdmin(`serguun42's Osnova Comments Bot have been spawned at ${new Date().toISOString()} <i>(ISO 8601, UTC)</i>`);
+	TelegramSendToAdmin(`serguun42's Osnova Comments Bot have been spawned at ${new Date().toISOString()}`);
 
 
+
+if (LOCAL_HTTP_BYPASS_SERVER_PORT) {
+	http.createServer((req, res) => {
+		if (req.method !== "POST") {
+			res.statusCode = 405;
+			res.end("405 Method Not Allowed");
+			return;
+		}
+
+
+		/** @type {Number} */
+		const specialChatID = CHATS_LIST.find((chat) => chat.special)?.id;
+		if (!specialChatID) {
+			res.statusCode = 404;
+			res.end("404 Not Found");
+			return;
+		};
+
+
+		new Promise((resolve, reject) => {
+			const chunks = [];
+
+			req.on("data", (chunk) => chunks.push(chunk));
+
+			req.on("error", (e) => reject(e));
+
+			req.on("end", () => resolve(Buffer.concat(chunks)));
+		}).then(/** @param {Buffer} iRequestBuffer */ (iRequestBuffer) => {
+			const payloadString = iRequestBuffer.toString();
+
+			try {
+				/** @type {CommentData} */
+				const commentData = {
+					...JSON.parse(payloadString),
+					likes: 0,
+					date: Date.now(),
+				};
+				const { authorAvatar, authorName, commentID, date, link, authorID, text } = commentData;
+
+				if (
+					!authorAvatar ||
+					!authorName ||
+					!commentID ||
+					!date ||
+					!link
+				) return Promise.reject(`Did not pass some essential comment data`);
+
+				res.statusCode = 200;
+				res.end("200 OK");
+
+
+				commentData.media = commentData.media ? commentData.media.map((media) => {
+					if (typeof media.type == "string" && typeof media.data == "object") {
+						return {
+							url: `https://leonardo.osnova.io/${media.data.uuid}`,
+							size: {
+								height: media.data.height,
+								width: media.data.width,
+								ratio: media.data.width / media.data.height
+							}
+						}
+					} else
+						return false;
+				}).filter((media) => media) : null;
+
+
+				const caption = `${
+					authorID ?
+						`<a href="${
+							encodeURI(new URL(`/u/${authorID}`, new URL(link).origin).href)}">${TGE(authorName)
+						}</a>`
+					:
+						`<b>${TGE(authorName)}</b>`
+				}\n\n${
+					text && text.length ?
+						`<i>${TGE(text)}</i>\n\n`
+					:
+						""
+				}<a href="${encodeURI(link)}">${TGE(link)}</a>`;
+
+
+				GlobalBuildImages([ commentData ])
+				.then(([{ buffer }]) => {
+					telegram.sendPhoto(specialChatID, {
+						source: buffer,
+						filename: `comment_halfsize_${commentID}.jpeg`
+					}, {
+						caption,
+						disable_web_page_preview: true,
+						parse_mode: "HTML"
+					})
+					.catch((e) => {
+						LogMessageOrError(e);
+
+						telegram.sendMessage(specialChatID, caption).catch(LogMessageOrError);
+					})
+					.finally(() => {
+						telegram.sendDocument(specialChatID, {
+							source: buffer,
+							filename: `comment_full_${commentID}.jpeg`
+						}, {
+							disable_web_page_preview: true
+						}).catch(LogMessageOrError);
+					});
+				}).catch(LogMessageOrError);
+			} catch (e) {
+				return Promise.reject(e);
+			};
+		}).catch((e) => {
+			LogMessageOrError(e);
+
+			res.statusCode = 500;
+			res.end("500 Internal Server Error");
+			return;
+		});
+	}).listen(LOCAL_HTTP_BYPASS_SERVER_PORT);
+}
 
 
 
