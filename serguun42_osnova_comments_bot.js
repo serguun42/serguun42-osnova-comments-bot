@@ -1074,7 +1074,7 @@ telegraf.on("text", (ctx) => {
 				return false;
 			};
 
-			telegram.deleteMessage(chat.id, message.message_id).catch(LogMessageOrError);
+			telegram.deleteMessage(chat.id, message.message_id).catch(() => {});
 
 			if (typeof COMMANDS[commandMatch[1]] == "string")
 				return ctx.reply(COMMANDS[commandMatch[1]], {
