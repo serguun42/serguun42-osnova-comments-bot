@@ -1,10 +1,10 @@
-const 
+const
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
 	Telegraf = require("telegraf");
 
 const
 	CONFIG = DEV ? require("../serguun42_osnova_comments_bot.config.mine.json") : require("../serguun42_osnova_comments_bot.config.json"),
-	{ 
+	{
 		TELEGRAM_BOT_TOKEN
 	} = CONFIG;
 

@@ -141,6 +141,8 @@ const LogMessageOrError = (...args) => {
 	if (DEV) fs.writeFile("./out/logmessageorerror.json", JSON.stringify([...args], false, "\t"), () => {});
 };
 
+
+
 /**
  * @typedef {Object} AuthorType
  * @property {Number} id
@@ -173,7 +175,7 @@ const LogMessageOrError = (...args) => {
  * @param {TelegramMessageObject} message
  * @returns {Promise<ParsedCommentData[]>, { code: String }>}
  */
-const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => {
+const GlobalParseMessageForLinksToComments = (message) => new Promise((resolve, reject) => {
 	if (!message.entities || !message.entities.length) return reject({ code: "No URLs in message" });
 
 
@@ -243,18 +245,25 @@ const GlobalCheckMessageForLink = (message) => new Promise((resolve, reject) => 
 });
 
 /**
- * @param {ParsedCommentData[]} iComments
+ * @param {ParsedCommentData[]} comments
  * @returns {Promise<CommentData[], {code: string}>}
  */
-const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingReject) => {
-	Promise.all(iComments.map((comment) => {
+const GlobalGetComments = (comments) => {
+	const entriesToFetch = comments.filter((comment, index) => {
+		return comments.findIndex((commentToFind) =>
+			commentToFind.host === comment.host && commentToFind.entryID === comment.entryID
+		) === index;
+	});
+
+
+	return Promise.all(entriesToFetch.map((entryToFetch) => {
 		/** @type {PlatformObject} */
-		const platform = CMTT_PLATFORMS[comment.host];
+		const platform = CMTT_PLATFORMS[entryToFetch.host];
 
-		if (!platform) return Promise.resolve({ text: null, place: 1 });
+		if (!platform) return Promise.resolve({ text: null });
 
 
-		return NodeFetch(`${platform.apiURL}entry/${comment.entryID}/comments/popular`, {
+		return NodeFetch(`${platform.apiURL}entry/${entryToFetch.entryID}/comments/popular`, {
 			headers: {
 				"X-Device-Token": platform.token,
 				"User-agent": platform.userAgent
@@ -264,62 +273,63 @@ const GlobalGetComments = (iComments) => new Promise((gettingResolve, gettingRej
 			if (res.status === 200)
 				return res.json();
 			else
-				return Promise.reject(`${platform.apiURL}entry/${comment.entryID}/comments/popular – ${res.status} ${res.statusText}`);
+				return Promise.reject(`${platform.apiURL}entry/${entryToFetch.entryID}/comments/popular – ${res.status} ${res.statusText}`);
 		}).then((data) => {
-			if (data.text === null) return Promise.resolve({ text: null, place: 2 });
-
-
-			let {result} = data;
-			/** @type {CommentData} */
-			let dataToResolve = { text: null, place: 3 };
-
-			if (result instanceof Array)
-				result.forEach((commentFromAPI) => {
-					if (commentFromAPI.id === comment.commentID) {
-						dataToResolve = {
-							link: `https://${comment.host}/${comment.entryID}?comment=${comment.commentID}`,
-							commentID: comment.commentID,
-							authorAvatar: commentFromAPI.author.avatar_url,
-							authorName: commentFromAPI.author.name,
-							authorVerified: commentFromAPI.author.is_verified,
-							likes: commentFromAPI.likes.summ,
-							text: commentFromAPI.text,
-							date: commentFromAPI.date * 1e3,
-							replyTo: (commentFromAPI.replyTo && !comment.hideReply) ? result.find((commentFromAPIToMatch) => commentFromAPIToMatch.id === commentFromAPI.replyTo) || "" : "",
-							donate: commentFromAPI.donate?.count || null,
-							...((commentFromAPI.media && commentFromAPI.media.length) ? {
-								media: commentFromAPI.media.map(({ imageUrl, size }) => {
-									return { url: imageUrl, size };
-								}).filter(i => !!i)
-							} : {})
-						};
-					};
-				});
-
-
-			return Promise.resolve(dataToResolve);
+			return Promise.resolve({
+				...entryToFetch,
+				commentsFromAPI: data?.result || []
+			});
 		}).catch((e) => {
 			LogMessageOrError(e);
 
-			return Promise.resolve({ text: null, place: 4 });
+			return Promise.resolve({ text: null });
 		});
-	})).then(/** @param {CommentData[]} commentsData */ (commentsData) => {
-		return gettingResolve(
-			commentsData
-				.filter((commentData) => commentData.text !== null)
-		);
-	}).catch(gettingReject);
-});
+	})).then((fetchedEntries) => Promise.resolve(comments.map((comment) => {
+		const correspondingEntry = fetchedEntries.find((fetchedEntry) => fetchedEntry.entryID === comment.entryID);
+		if (!correspondingEntry) return { text: null };
+
+		const { commentsFromAPI } = correspondingEntry;
+		if (!commentsFromAPI) return { text: null };
+
+		/** @type {CommentData} */
+		let dataToResolve = { text: null };
+
+		if (commentsFromAPI instanceof Array)
+			commentsFromAPI.forEach((commentFromAPI) => {
+				if (commentFromAPI.id === comment.commentID) {
+					dataToResolve = {
+						link: `https://${comment.host}/${comment.entryID}?comment=${comment.commentID}`,
+						commentID: comment.commentID,
+						authorAvatar: commentFromAPI.author.avatar_url,
+						authorName: commentFromAPI.author.name,
+						authorVerified: commentFromAPI.author.is_verified,
+						likes: commentFromAPI.likes.summ,
+						text: commentFromAPI.text,
+						date: commentFromAPI.date * 1e3,
+						replyTo: (commentFromAPI.replyTo && !comment.hideReply) ? commentsFromAPI.find((commentFromAPIToMatch) => commentFromAPIToMatch.id === commentFromAPI.replyTo) || "" : "",
+						donate: commentFromAPI.donate?.count || null,
+						...((commentFromAPI.media && commentFromAPI.media.length) ? {
+							media: commentFromAPI.media.map(({ imageUrl, size }) => {
+								return { url: imageUrl, size };
+							}).filter(i => !!i)
+						} : {})
+					};
+				};
+			});
+
+		return dataToResolve;
+	})));
+};
 
 /**
- * @param {CommentData[]} iComments
- * @returns {Promise.<{buffer: Buffer, link: string, commentID: number}[], {code: string}>}
+ * @param {CommentData[]} comments
+ * @returns {Promise<{buffer: Buffer, link: string, commentID: number}[], {code: string}>}
  */
-const GlobalBuildImages = (iComments) => {
-	const JPEGsData = new Array(iComments.length).fill(false);
+const GlobalBuildImages = (comments) => {
+	const JPEGsData = new Array(comments.length).fill(false);
 
 	return new Promise((resolve) => {
-		iComments.forEach((commentData, commentIndex) => {
+		comments.forEach((commentData, commentIndex) => {
 			const
 				fontSize = commentData.text && commentData.text.length > 20 ? 64 : 84,
 				commentBodyColor = "#121212",
@@ -520,7 +530,7 @@ const GlobalBuildImages = (iComments) => {
 
 						additionalEntities.push({
 							type: "verified",
-							offsetLeft: ctxForTest.measureText(lineText).width + fontSize * 0.2,
+							offsetLeft: ctxForTest.measureText(lineText).width + fontSize * 0.35,
 							verifiedSize: fontSize * 0.8
 						});
 					}
@@ -557,7 +567,7 @@ const GlobalBuildImages = (iComments) => {
 			const imagesToDraw = [];
 
 			/**
-			 * @returns {Promise.<"Successfull">}
+			 * @returns {Promise<"Successfull">}
 			 */
 			const LocalDrawAllImages = () => new Promise((resolveDrawingImages) => {
 				if (!imagesToDraw.length) return resolveDrawingImages("Successfull");
@@ -749,7 +759,7 @@ const GlobalBuildImages = (iComments) => {
 				  dateString = (
 						isToday ? timeString : (
 							isYesterday ? `Вчера, ${timeString}` : (
-								dateDiff < 30 * day ? 
+								dateDiff < 30 * day ?
 										`${dateObject.getDate()} ${months[dateObject.getMonth()]}, ${timeString}`
 									:
 										`${dateObject.getDate()} ${months[dateObject.getMonth()]} ${dateObject.getFullYear()}`
@@ -921,6 +931,8 @@ const GlobalReplyWithImages = (ctx, screensData, fullsize = false) => {
 	});
 };
 
+
+
 const TGE = iStr => {
 	if (!iStr) return "";
 
@@ -1068,8 +1080,12 @@ if (LOCAL_HTTP_BYPASS_SERVER_PORT) {
 }
 
 
+const botStartedTime = Date.now();
 
 telegraf.on("text", (ctx) => {
+	if (Date.now() - botStartedTime < 15e3 & !DEV) return;
+
+
 	const {chat, from} = ctx;
 
 
@@ -1141,7 +1157,7 @@ telegraf.on("text", (ctx) => {
 
 
 
-		GlobalCheckMessageForLink(message)
+		GlobalParseMessageForLinksToComments(message)
 			.then((commentsID) => GlobalGetComments(commentsID))
 			.then((commentsData) => GlobalBuildImages(commentsData))
 			.then((commentsImages) => GlobalReplyWithImages(ctx, commentsImages, chatFromList.fullsize))
