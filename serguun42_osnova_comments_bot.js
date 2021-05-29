@@ -376,6 +376,7 @@ const GlobalBuildImages = (iComments) => {
 				const allEmojiesFromMessage = Array.from(text.match(EmojiRegexp) || []);
 				let emojiIndex = 0;
 
+				text = text.replace(EmojiRegexp.global, "👁");
 
 
 				const linesSplittedByNewLineChar = text.split("\n");
@@ -509,6 +510,8 @@ const GlobalBuildImages = (iComments) => {
 								metrics.push(ctxForTest.measureText(partOfLine).width);
 							};
 						});
+
+						lineText = lineText.replace(EmojiRegexp.global, "•");
 					}
 
 
@@ -643,7 +646,7 @@ const GlobalBuildImages = (iComments) => {
 								ctx.closePath();
 							} else if (additionalEntity.type == "emoji") {
 								ctx.fillStyle = "#FFFFFF";
-								ctx.fillRect(100 + additionalEntity.offsetLeft, 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10, fontSize + 10, fontSize * 1.2);
+								ctx.fillRect(100 + additionalEntity.offsetLeft, 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10, fontSize * 1.25, fontSize * 1.25);
 
 
 								imagesToDraw.push({
@@ -651,7 +654,7 @@ const GlobalBuildImages = (iComments) => {
 									width: fontSize,
 									height: fontSize,
 									x: 100 + additionalEntity.offsetLeft,
-									y: 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 10
+									y: 332 + (fontSize * 1.2) * lineForRealCanvasIndex + 8
 								});
 							}
 						});
@@ -791,7 +794,7 @@ const GlobalBuildImages = (iComments) => {
 						replyToNameText.additionalEntities.forEach((additionalEntity) => {
 							if (additionalEntity.type == "emoji") {
 								ctx.fillStyle = "#FFFFFF";
-								ctx.fillRect(additionalEntity.offsetLeft + offsetForReplyToNameText - 4, 250 - dateFontSize, dateFontSize * 1.2, dateFontSize * 1.2);
+								ctx.fillRect(additionalEntity.offsetLeft + offsetForReplyToNameText - 4, 250 - dateFontSize, dateFontSize * 1.25, dateFontSize * 1.25);
 
 
 								imagesToDraw.push({
@@ -799,7 +802,7 @@ const GlobalBuildImages = (iComments) => {
 									width: dateFontSize,
 									height: dateFontSize,
 									x: additionalEntity.offsetLeft + offsetForReplyToNameText,
-									y: 250 - dateFontSize + 2
+									y: 250 - dateFontSize
 								});
 							} else if (additionalEntity.type == "verified") {
 								imagesToDraw.push({
