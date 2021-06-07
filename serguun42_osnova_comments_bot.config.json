@@ -52,5 +52,11 @@
 	],
 	"LOCAL_SERVER_PORT": 8081,
 	"LOCAL_HTTP_BYPASS_SERVER_PORT": 8082,
-	"DUMPING_FOLDER": "/dump/"
+	"DUMPING_FOLDER": "/dump/",
+	"HEADERS_FOR_FETCHING": {
+		"accept": "image/*,*/*;q=0.8",
+		"accept-language": "en-US,en;q=0.9,ru;q=0.8",
+		"referer": "https://serguun42.ru/",
+		"user-agent": "Mozilla/5.0 (Linux; Ubuntu 20.04) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36"
+	}
 }

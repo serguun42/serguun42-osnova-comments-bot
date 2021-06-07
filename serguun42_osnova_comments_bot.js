@@ -3,7 +3,7 @@ const
 	http = require("http"),
 	{ join } = require("path"),
 	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	{ createCanvas, loadImage, registerFont } = require("canvas"),
+	{ createCanvas, loadImage, registerFont, Image: CanvasImage } = require("canvas"),
 	EmojiRegexp = /([\u{1f300}-\u{1f5ff}\u{1f900}-\u{1f9ff}\u{1f600}-\u{1f64f}\u{1f680}-\u{1f6ff}\u{2600}-\u{26ff}\u{2700}-\u{27bf}\u{1f1e6}-\u{1f1ff}\u{1f191}-\u{1f251}\u{1f004}\u{1f0cf}\u{1f170}-\u{1f171}\u{1f17e}-\u{1f17f}\u{1f18e}\u{3030}\u{2b50}\u{2b55}\u{2934}-\u{2935}\u{2b05}-\u{2b07}\u{2b1b}-\u{2b1c}\u{3297}\u{3299}\u{303d}\u{00a9}\u{00ae}\u{2122}\u{23f3}\u{24c2}\u{23e9}-\u{23ef}\u{25b6}\u{23f8}-\u{23fa}])/ug,
 	MentionRegexp = /\[\@\d+\|([^\]]+)\]/g,
 	NodeFetch = require("node-fetch"),
@@ -34,8 +34,9 @@ const
 		COMMANDS_WHITELIST,
 		BLACKLIST,
 		LOCAL_SERVER_PORT,
+		LOCAL_HTTP_BYPASS_SERVER_PORT,
 		DUMPING_FOLDER,
-		LOCAL_HTTP_BYPASS_SERVER_PORT
+		HEADERS_FOR_FETCHING
 	} = CONFIG,
 	COMMANDS_USAGE = new Object(),
 	COMMANDS = {
@@ -563,7 +564,23 @@ const GlobalBuildImages = (comments) => {
 				heightForCanvas += fontSize * 2 + 64;
 
 
-			/** @type {{url: string, x: number, y: number, width: number, height: number}[]} */
+			/**
+			 * @typedef {Object} RemoteImageToDraw
+			 * @property {String} url
+			 * @property {Number} x
+			 * @property {Number} y
+			 * @property {Number} width
+			 * @property {Number} height
+			 */
+			/**
+			 * @typedef {Object} LocalImageToDraw
+			 * @property {String} path
+			 * @property {Number} x
+			 * @property {Number} y
+			 * @property {Number} width
+			 * @property {Number} height
+			 */
+			/** @type {(RemoteImageToDraw | LocalImageToDraw)[]} */
 			const imagesToDraw = [];
 
 			/**
@@ -575,7 +592,28 @@ const GlobalBuildImages = (comments) => {
 				const drawnImages = imagesToDraw.map(() => false);
 
 				imagesToDraw.forEach((imageToDraw, imageIndex) => {
-					loadImage(imageToDraw.url).then((imageReadyData) => {
+					/** @type {Promise<CanvasImage>} */
+					const loadingImage = (imageToDraw.url ?
+							NodeFetch(imageToDraw.url, {
+								headers: { ...HEADERS_FOR_FETCHING }
+							}).then((res) => {
+								if (res.status === 200)
+									return res.buffer();
+								else
+									return Promise.reject(new Error(`Status code ${res.status} ${res.statusText} @ ${imageToDraw.url}`));
+							})
+							.then((imageBuffer) => {
+								const image = new CanvasImage();
+								image.src = imageBuffer;
+
+								return Promise.resolve(image);
+							})
+						:
+							loadImage(imageToDraw.path)
+					);
+
+
+					loadingImage.then((imageReadyData) => {
 						ctx.drawImage(imageReadyData, imageToDraw.x, imageToDraw.y, imageToDraw.width, imageToDraw.height);
 					})
 					.catch(LogMessageOrError)
@@ -660,7 +698,7 @@ const GlobalBuildImages = (comments) => {
 
 
 								imagesToDraw.push({
-									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+									path: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
 									width: fontSize,
 									height: fontSize,
 									x: 100 + additionalEntity.offsetLeft,
@@ -730,7 +768,7 @@ const GlobalBuildImages = (comments) => {
 
 
 						imagesToDraw.push({
-							url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+							path: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
 							width: 90,
 							height: 90,
 							x: additionalEntity.offsetLeft + 350,
@@ -738,7 +776,7 @@ const GlobalBuildImages = (comments) => {
 						});
 					} else if (additionalEntity.type == "verified") {
 						imagesToDraw.push({
-							url: `./fonts/verified.png`,
+							path: `./fonts/verified.png`,
 							width: additionalEntity.verifiedSize,
 							height: additionalEntity.verifiedSize,
 							x: additionalEntity.offsetLeft + 350 + (commentHeadLines[1] ? additionalEntity.verifiedSize : 0),
@@ -784,7 +822,7 @@ const GlobalBuildImages = (comments) => {
 						  offsetForReplyToNameText = 350 + dateStringWidth + 50 + 42 + 8;
 
 					imagesToDraw.push({
-						url: "./fonts/reply_icon.png",
+						path: "./fonts/reply_icon.png",
 						width: 42,
 						height: 42,
 						x: 350 + dateStringWidth + 50,
@@ -808,7 +846,7 @@ const GlobalBuildImages = (comments) => {
 
 
 								imagesToDraw.push({
-									url: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
+									path: `./fonts/png/${EmojiToUnicode(additionalEntity.value)}.png`,
 									width: dateFontSize,
 									height: dateFontSize,
 									x: additionalEntity.offsetLeft + offsetForReplyToNameText,
@@ -816,7 +854,7 @@ const GlobalBuildImages = (comments) => {
 								});
 							} else if (additionalEntity.type == "verified") {
 								imagesToDraw.push({
-									url: `./fonts/verified.png`,
+									path: `./fonts/verified.png`,
 									width: additionalEntity.verifiedSize,
 									height: additionalEntity.verifiedSize,
 									x: additionalEntity.offsetLeft + offsetForReplyToNameText,
@@ -1083,7 +1121,7 @@ if (LOCAL_HTTP_BYPASS_SERVER_PORT) {
 const botStartedTime = Date.now();
 
 telegraf.on("text", (ctx) => {
-	if (Date.now() - botStartedTime < 15e3 & !DEV) return;
+	if (Date.now() - botStartedTime < 5e3) return;
 
 
 	const {chat, from} = ctx;
