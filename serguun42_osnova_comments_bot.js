@@ -738,7 +738,7 @@ const GlobalBuildImages = (comments) => {
 			}
 
 
-			let commentHeadLines = LocalGetLines(commentData.authorName, 1240, headFontSize, "700", { verified: commentData.authorVerified }),
+			let commentHeadLines = LocalGetLines(commentData.authorName || "", 1240, headFontSize, "700", { verified: commentData.authorVerified }),
 				commentHeadText = commentHeadLines[0];
 
 			if (commentHeadLines[1]) commentHeadText.text += "…";
@@ -1052,6 +1052,8 @@ if (LOCAL_HTTP_BYPASS_SERVER_PORT) {
 
 				commentData.media = commentData.media ? commentData.media.map((media) => {
 					if (typeof media.type == "string" && typeof media.data == "object") {
+						if (!media.data?.uuid) return false;
+
 						return {
 							url: `https://leonardo.osnova.io/${media.data.uuid}`,
 							size: {
