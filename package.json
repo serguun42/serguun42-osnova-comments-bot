@@ -1,16 +1,42 @@
 {
-  "name": "serguun42_osnova_comments_bot",
-  "version": "1.0.0",
-  "description": "",
+  "name": "serguun42-osnova-comments-bot",
+  "version": "2.0.0",
+  "description": "Telegram bot for drawing comments from Osnova.",
+  "keywords": [
+    "osnova",
+    "canvas",
+    "telegram",
+    "telegraf"
+  ],
+  "author": "serguun42",
+  "license": "BSL-1.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/serguun42/serguun42-osnova-comments-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/serguun42/serguun42-osnova-comments-bot/issues"
+  },
+  "homepage": "https://github.com/serguun42/serguun42-osnova-comments-bot",
   "main": "serguun42_osnova_comments_bot.js",
   "scripts": {
-    "start_bot": "node ./serguun42_osnova_comments_bot.js"
+    "production": "pm2 start config/pm2.production.json",
+    "dev": "nodemon serguun42_osnova_comments_bot.js --config config/nodemon.dev.json",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "canvas": "^2.7.0",
-    "node-fetch": "^2.6.1",
-    "telegraf": "^4.3.0"
+    "canvas": "2.10.1",
+    "node-fetch": "3.2.10",
+    "telegraf": "4.9.2"
+  },
+  "devDependencies": {
+    "eslint": "8.24.0",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-import": "2.26.0",
+    "eslint-plugin-prettier": "4.2.1",
+    "prettier": "2.7.1",
+    "typescript": "4.8.3"
   }
 }

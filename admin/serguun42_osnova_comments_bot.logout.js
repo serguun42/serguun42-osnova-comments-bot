@@ -1,20 +1,13 @@
-const
-	DEV = require("os").platform() === "win32" || process.argv[2] === "DEV",
-	Telegraf = require("telegraf");
+/* eslint-disable no-console */
+import { Telegraf } from 'telegraf';
+import LoadConfig from '../util/load-config.js';
 
-const
-	CONFIG = DEV ? require("../serguun42_osnova_comments_bot.config.mine.json") : require("../serguun42_osnova_comments_bot.config.json"),
-	{
-		TELEGRAM_BOT_TOKEN
-	} = CONFIG;
+const { TELEGRAM_BOT_TOKEN } = LoadConfig();
 
+const telegraf = new Telegraf(TELEGRAM_BOT_TOKEN);
+const { telegram } = telegraf;
 
-
-const telegraf = new Telegraf.Telegraf(TELEGRAM_BOT_TOKEN);
-const telegram = telegraf.telegram;
-
-
-
-telegram.logOut()
-	.then((success) => console.log(`Logout success: ${success}`))
-	.catch(console.warn);
+telegram
+  .logOut()
+  .then((success) => console.log(`Logout success: ${success}`))
+  .catch(console.warn);

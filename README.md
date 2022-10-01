@@ -1,29 +1,22 @@
 # serguun42-osnova-comments-bot
-Telegram бот. В общем чате в ответ на сообщения с ссылками на комменты с TJournal, DTF и VC отвечает картинками в высоком разрешении с текстом, автором, кармой и аттачами.
 
-
-## Использующиеся модули
-
-
-Модули, которые использует `serguun42_osnova_comments_bot.js` (можете установить их через `npm`, `yarn`, etc.):
-* `telegraf`
-* `node-fetch`
-* `canvas`
-
+Telegram bot for drawing comments from Osnova. Used in groups – replies to messages containing links to Osnova posts. Support drawing all media and other attachments.
 
 ## Config
 
-* `LOCAL_SERVER_PORT` – порт локального сервера [Telegram Bot API](https://github.com/tdlib/telegram-bot-api). `0`/`null` – для использования _Cloud_-сервера
-* `LOCAL_HTTP_BYPASS_SERVER_PORT` – порт локального HTTP-сервера – другого источника для создания комментов. Может быть использован вместе с сообщениями из настроенных Telegram-каналов либо вместо них. `0`/`null` – для отключения такого сервера.
-* `DUMPING_FOLDER` – укажите непустую строку, чтобы указать папку для сброса JPEG-файлов перед отправкой.
-
+See [config.d.ts](./types/config.d.ts) for type definitions of all parameters with comments, then edit an example [config.json](./config/config.json).
 
 ## Commands
 
-* `npm install`
-* `npm run start_bot`
+1. Install only necessary dependencies – `npm i --production`
+2. Run in production mode – `npm run production`
 
+## Development
 
-## Fonts – by Google
-[Download Page](https://fonts.google.com/specimen/Roboto)<br>
-[Fonts Lisence](http://www.apache.org/licenses/LICENSE-2.0)
+- Install all dependencies – `npm i`
+- Run in dev mode with watch-reload – `npm run dev`
+- Check with ESLint – `npm run lint`
+
+---
+
+### [BSL-1.0 License](./LICENSE)

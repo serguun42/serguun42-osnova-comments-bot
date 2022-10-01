@@ -1,7 +1,10 @@
 .vscode/
+package-lock.json
 node_modules/
 out/
-package-lock.json
 pg.js
 serguun42 Comments Bot Logo.jpg
-*.mine.json
+
+*.dev.json
+*.bat
+*.sh

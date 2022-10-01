@@ -1,0 +1,13 @@
+{
+	"apps": [{
+		"name"				: "serguun42_osnova_comments_bot",
+		"script"			: "./serguun42_osnova_comments_bot.js",
+		"watch"				: false,
+		"append"			: true,
+		"sourceDir"			: "./",
+		"log_date_format"	: "YYYY-MM-DD HH:mm:ss Z",
+		"env"				: {
+			"NODE_ENV": "production"
+		}
+	}]
+}
