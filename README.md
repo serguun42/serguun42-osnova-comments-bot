@@ -8,7 +8,7 @@ See [config.d.ts](./types/config.d.ts) for type definitions of all parameters wi
 
 ## Commands
 
-1. Install only necessary dependencies – `npm i --production`
+1. Install only necessary dependencies – `npm i --production` (try passing parameter `--build-from-source` if you get an error)
 2. Run in production mode – `npm run production`
 
 ## Development

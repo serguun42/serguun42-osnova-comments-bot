@@ -10,6 +10,7 @@ export type ChatConfig = {
 
 export type Config = {
   TELEGRAM_BOT_TOKEN: string;
+  BOT_USERNAME: string;
 
   /** List of chat: enabled, disabled, special, etc. */
   CHATS_LIST: ChatConfig[];
@@ -21,7 +22,7 @@ export type Config = {
 
   /**
    * All supported Osnova sites
-   * 
+   *
    * @example `{ "tjournal.ru": { "token": "…", "apiURL": "https://api.tjournal.ru/v1.8/", "…" } }`
    */
   CMTT_PLATFORMS: {

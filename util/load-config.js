@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
+import IS_DEV from './is-dev.js';
 import LogMessageOrError from './log.js';
-
-const IS_DEV = process.env.NODE_ENV === 'development';
 
 /** Caching read raw JSON */
 let localRawJSON = '';

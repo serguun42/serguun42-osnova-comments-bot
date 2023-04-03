@@ -1,5 +1,6 @@
 {
   "TELEGRAM_BOT_TOKEN": "000000:AAAAAAAAAAAAAAAAAAAAA",
+  "BOT_USERNAME": "commentbot",
   "CMTT_PLATFORMS": {
     "tjournal.ru": {
       "token": "aaaaaaaaaa",

@@ -69,6 +69,7 @@ const GetComments = (commentsFromMessage) => {
             `https://${commentFromMessage.host}/${commentFromMessage.entryID}?comment=${commentFromMessage.commentID}`
           ),
           postID: commentFromMessage.entryID,
+          hideReply: commentFromMessage.hideReply,
         };
 
         return Promise.resolve(commentToBuild);

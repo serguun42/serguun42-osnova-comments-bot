@@ -5,14 +5,13 @@ import EmojiToUnicode from '../util/emoji-to-unicode.js';
 import { FromUnixTimestamp, DAY, MINUTE, MONTHS_SHORT } from '../util/time.js';
 import LoadConfig from '../util/load-config.js';
 import LogMessageOrError from '../util/log.js';
+import IS_DEV from '../util/is-dev.js';
 
-const IS_DEV = process.env.NODE_ENV === 'development';
 const { CDN_DOMAIN, HEADERS_FOR_FETCHING } = LoadConfig();
 
 registerFont('./fonts/Roboto-Light.ttf', { family: 'Roboto', weight: '300' });
 registerFont('./fonts/Roboto-Regular.ttf', { family: 'Roboto', weight: '400' });
 registerFont('./fonts/Roboto-Bold.ttf', { family: 'Roboto', weight: '700' });
-registerFont('./fonts/SegoeUIEmoji.ttf', { family: 'Segoe UI Emoji' });
 
 if (IS_DEV) registerFont('./fonts/SegoeUIEmoji.ttf', { family: 'Segoe UI Emoji' });
 else registerFont('./fonts/NotoColorEmoji.ttf', { family: 'Noto Color Emoji' });
@@ -464,7 +463,7 @@ const BuildImages = (comments) =>
       ctx.fillStyle = commentHeadDateColor;
       ctx.fillText(dateString, 350, 250);
 
-      if (commentData.replyTo) {
+      if (commentData.replyTo && !commentData.hideReply) {
         const parentComment = commentData.allComments.find((matching) => matching.id === commentData.replyTo);
 
         const replyToName = parentComment?.author?.name;

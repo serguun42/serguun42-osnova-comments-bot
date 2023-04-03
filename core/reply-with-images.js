@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import LoadConfig from '../util/load-config.js';
 import LogMessageOrError from '../util/log.js';
+import SendingWrapper from '../util/sending-wrapper.js';
 import TGE from '../util/tge.js';
 
 const { DUMPING_FOLDER } = LoadConfig();
@@ -19,8 +20,8 @@ const ReplyWithImages = (ctx, builtComments, fullsize = false) => {
         buildComment.buffer
       ).catch(LogMessageOrError);
 
-    ctx
-      .replyWithPhoto(
+    SendingWrapper(() =>
+      ctx.replyWithPhoto(
         {
           source: buildComment.buffer,
           filename: `comment_halfsize_${buildComment.commentID}.jpeg`,
@@ -33,11 +34,12 @@ const ReplyWithImages = (ctx, builtComments, fullsize = false) => {
           allow_sending_without_reply: true,
         }
       )
+    )
       .catch(LogMessageOrError)
       .finally(() => {
         if (fullsize) {
-          ctx
-            .replyWithDocument(
+          SendingWrapper(() =>
+            ctx.replyWithDocument(
               {
                 source: buildComment.buffer,
                 filename: `comment_full_${buildComment.commentID}.jpeg`,
@@ -48,7 +50,7 @@ const ReplyWithImages = (ctx, builtComments, fullsize = false) => {
                 allow_sending_without_reply: true,
               }
             )
-            .catch(LogMessageOrError);
+          ).catch(LogMessageOrError);
         }
       });
   });
