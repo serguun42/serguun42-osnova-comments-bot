@@ -5,6 +5,8 @@ out/
 pg.js
 serguun42 Comments Bot Logo.jpg
 
+dev/
 *.dev.json
+!config/nodemon.dev.json
 *.bat
 *.sh

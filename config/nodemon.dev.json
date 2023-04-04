@@ -1,0 +1,7 @@
+{
+	"verbose": false,
+	"env": {
+		"NODE_ENV": "development"
+	},
+	"ignore": [".git", "node_modules", "out", "database"]
+}

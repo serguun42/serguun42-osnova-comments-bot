@@ -27,6 +27,6 @@ export interface MediaData {
 }
 
 export type Media = {
-  type: string;
+  type: 'media';
   data: MediaData;
 };
