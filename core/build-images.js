@@ -565,18 +565,9 @@ const BuildSingleImage = (commentData) => {
   ctx.font = `400 ${headFontSize}px "Roboto"`;
   ctx.fillText(karmaText, karmaTextLeft + karmaIconWidth + karmaIconPadding, karmaTextTop);
 
-  let userAvatarUrl = commentData.author.avatar_url;
-
-  try {
-    const userAvatarUrlObject = new URL(userAvatarUrl);
-
-    if (userAvatarUrlObject && userAvatarUrlObject.host === 'leonardo.osnova.io') {
-      if (userAvatarUrl[userAvatarUrl.length - 1] !== '/') userAvatarUrl += '/';
-      userAvatarUrl += `-/scale_crop/340x340/center/`;
-    }
-  } catch (e) {
-    LogMessageOrError(e);
-  }
+  const userAvatarUrl = `https://leonardo.osnova.io/${
+    commentData.author.avatar.data.uuid || ''
+  }/-/scale_crop/340x340/center/`;
 
   imagesToDraw.push({
     url: userAvatarUrl,

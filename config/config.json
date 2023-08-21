@@ -4,17 +4,17 @@
   "CMTT_PLATFORMS": {
     "tjournal.ru": {
       "token": "aaaaaaaaaa",
-      "apiURL": "https://api.tjournal.ru/v1.9/",
+      "apiURL": "https://api.tjournal.ru/v2.31/",
       "userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
     },
     "dtf.ru": {
       "token": "bbbbbbbbb",
-      "apiURL": "https://api.dtf.ru/v1.9/",
+      "apiURL": "https://api.dtf.ru/v2.31/",
       "userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
     },
     "vc.ru": {
       "token": "cccccccccc",
-      "apiURL": "https://api.vc.ru/v1.9/",
+      "apiURL": "https://api.vc.ru/v2.31/",
       "userAgent": "app/1.0.0 (App; OS; Language; Resolution)"
     }
   },

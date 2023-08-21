@@ -1,7 +1,8 @@
 export interface CommentAuthor {
   id: number;
   name: string;
-  avatar_url: string;
+  avatar?: import('./post_version').PostMedia;
+  avatar_url?: string;
   type: number;
   is_verified: boolean;
   is_online: boolean;
@@ -29,18 +30,25 @@ export interface CommentMedium {
   };
 }
 
-export type CommentAttachTypeMedia = import('./media').Media;
+export type CommentAttachTypeMedia = import('./post_version').PostMedia;
 
-export type CommentAttachTypeVideo = import('./media').Video;
+export type CommentAttachTypeVideo = import('./post_version').PostVideo;
 
 export type CommentAttachTypeTweet = {
   type: 'tweet';
-  data: any;
+  data: {
+    tweet_data: import('./osnova-post-sub-tweet').Tweet;
+    tweet_data_encoded: string;
+    version: string;
+  };
 };
 
 export type CommentAttachTypeTelegram = {
   type: 'telegram';
-  data: any;
+  data: {
+    tg_data: import('./osnova-post-sub-telegram').TelegramPost;
+    tg_data_encoded: string;
+  };
 };
 
 export type CommentAttachTypeLink = {
@@ -49,7 +57,7 @@ export type CommentAttachTypeLink = {
     url: string;
     title: string;
     description: string;
-    image?: import('./media').Media;
+    image?: import('./post_version').PostMedia;
     v: 1;
   };
 };
@@ -67,7 +75,7 @@ export type CommentAttach =
   | CommentAttachTypeLink
   | CommentAttachTypeDefault;
 
-export interface CommentFromAPI {
+export interface Comment {
   id: number;
   author: CommentAuthor;
   date: number;
@@ -92,4 +100,4 @@ export interface CommentFromAPI {
   donate?: { count: number };
 }
 
-export default CommentFromAPI;
+export default Comment;

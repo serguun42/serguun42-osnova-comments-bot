@@ -22,7 +22,7 @@ const GetComments = (commentsFromMessage) => {
       const platform = CMTT_PLATFORMS[commentUniqueByEntryId.host];
       if (!platform) return Promise.resolve(null);
 
-      const methodUrl = `${platform.apiURL}entry/${commentUniqueByEntryId.entryID}/comments/popular`;
+      const methodUrl = `${platform.apiURL}comments?contentId=${commentUniqueByEntryId.entryID}&sorting=date`;
       return fetch(methodUrl, {
         headers: {
           'X-Device-Token': platform.token,
@@ -38,8 +38,8 @@ const GetComments = (commentsFromMessage) => {
         .then((data) =>
           Promise.resolve({
             ...commentUniqueByEntryId,
-            /** @type {import('../types/comment-from-api.js').CommentFromAPI[]} */
-            commentsFromAPI: data?.result || [],
+            /** @type {import('../types/comment-from-api.js').Comment[]} */
+            commentsFromAPI: data?.result?.items || [],
           })
         )
         .catch((e) => {
